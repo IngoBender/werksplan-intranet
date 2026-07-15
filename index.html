@@ -659,16 +659,16 @@ function renderHallen(){const svg=document.getElementById('hallen');
   const pts=poly.map(([x,y])=>`${x/100*vb},${y/100*RH}`).join(' ');
   const col=c.o?'#e0574a':c.f?'#f5a623':'#567E84';
   s+=`<polygon points="${pts}" fill="${col}22" stroke="${col}" stroke-width="2" style="cursor:pointer" onclick="openHalle(hMap['${h.id}'])" onmouseover="this.style.fill='${col}44'" onmouseout="this.style.fill='${col}22'"/>`;
-  // Label + Pills an Polygon-Mitte (kompakt, kleinere Schrift, Anti-Kollision bei kleinen Hallen)
+  // Label + Pills — kompakt, kleine Schrift, vertikal gestaffelt für die 3 dichten kleinen Bereiche
   let cx=poly.reduce((a,[x])=>a+x,0)/poly.length, cy=poly.reduce((a,[,y])=>a+y,0)/poly.length;
-  // Manuelle Versätze für dicht beieinanderliegende kleine Bereiche unten links (in %-Punkten)
-  const OFF={sozial:[-1,-4],zwischenlager:[0,4],drahtvorb:[0,-3]};
-  if(OFF[h.id]){ cx+=OFF[h.id][0]; cy+=OFF[h.id][1]; }
+  // Feste Label-Anker (%) für kollidierende Kleinbereiche unten links: vertikal gestaffelt
+  const ANCHOR={sozial:[11.5,68], zwischenlager:[17.6,90], drahtvorb:[26,79]};
+  if(ANCHOR[h.id]){ cx=ANCHOR[h.id][0]; cy=ANCHOR[h.id][1]; }
   let pills=`${c.total} Anl.`; if(c.f)pills+=` · ${c.f}⚠`; if(c.o)pills+=` · ${c.o}⛔`;
-  // Kästchenbreite dynamisch nach Textlänge (kompakter)
-  const lw=Math.max(h.label.length,pills.length), bw=Math.max(46,lw*5.2+10);
+  // Kompaktes Kästchen, kleine Schrift
+  const lw=Math.max(h.label.length,pills.length), bw=Math.max(38,lw*4.4+8);
   const bx=cx/100*vb, by=cy/100*RH;
-  s+=`<g style="pointer-events:none"><rect x="${bx-bw/2}" y="${by-13}" width="${bw}" height="25" rx="4" fill="#143439" opacity="0.92"/><text x="${bx}" y="${by-2}" fill="#fff" font-size="10" font-weight="700" text-anchor="middle">${h.label}</text><text x="${bx}" y="${by+8}" fill="#9fc4bd" font-size="7.5" text-anchor="middle">${pills}</text></g>`;
+  s+=`<g style="pointer-events:none"><rect x="${bx-bw/2}" y="${by-11}" width="${bw}" height="21" rx="4" fill="#143439" opacity="0.92"/><text x="${bx}" y="${by-1.5}" fill="#fff" font-size="8.5" font-weight="700" text-anchor="middle">${h.label}</text><text x="${bx}" y="${by+7}" fill="#9fc4bd" font-size="6.5" text-anchor="middle">${pills}</text></g>`;
  });
  svg.innerHTML=s;}
 
