@@ -1,344 +1,366 @@
 <!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Werksplan Hagener Feinstahl</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  :root {
-    --legacy:#143439; --bright:#46B384; --graphite:#567E84;
-    --bg:#0e1a1c; --panel:#12262a; --panel2:#0f2023; --line:#1e3a3f;
-    --txt:#eaf2f0; --muted:#8fa9a8; --flow:linear-gradient(-56deg,#567E84 0%,#46B384 100%);
-    --ok:#46B384; --warn:#f5a623; --crit:#e0574a;
-  }
-  * { box-sizing:border-box; margin:0; padding:0; }
-  body { font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--txt); }
-  /* Header mit Bender-Flow-Akzent */
-  header { padding:0; background:var(--legacy); border-bottom:1px solid var(--line); }
-  .hbar { height:4px; background:var(--flow); }
-  .htop { padding:14px 24px; display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
-  header h1 { font-size:19px; font-weight:700; letter-spacing:.2px; display:flex; align-items:center; gap:10px; }
-  header .logo { width:30px; height:30px; border-radius:7px; background:var(--flow); display:flex; align-items:center; justify-content:center; font-size:16px; }
-  header .sub { font-size:12px; color:#9fc4bd; margin-top:2px; }
-  .legend { display:flex; gap:16px; flex-wrap:wrap; margin-left:auto; align-items:center; }
-  .legend span { font-size:12px; display:flex; align-items:center; gap:6px; color:#cfe3df; }
-  .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
-  /* KPI-Leiste */
-  .kpis { display:flex; gap:14px; padding:14px 24px; background:var(--panel2); border-bottom:1px solid var(--line); flex-wrap:wrap; }
-  .kpi { flex:1; min-width:150px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; position:relative; overflow:hidden; }
-  .kpi::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--bright); }
-  .kpi.warn::before { background:var(--warn); } .kpi.crit::before { background:var(--crit); }
-  .kpi .n { font-size:26px; font-weight:750; line-height:1; }
-  .kpi .l { font-size:11px; color:var(--muted); margin-top:6px; text-transform:uppercase; letter-spacing:.5px; }
-  /* Toolbar */
-  .toolbar { padding:10px 24px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; border-bottom:1px solid var(--line); background:var(--bg); }
-  .toolbar button { background:var(--panel); color:var(--txt); border:1px solid var(--line); padding:7px 14px; border-radius:8px; font-size:12px; cursor:pointer; transition:.15s; }
-  .toolbar button:hover { border-color:var(--bright); }
-  .toolbar input { background:var(--panel); border:1px solid var(--line); color:var(--txt); padding:7px 12px; border-radius:8px; font-size:12px; width:200px; }
-  .toolbar input:focus { outline:none; border-color:var(--bright); }
-  #backbtn { display:none; background:var(--graphite); border-color:var(--graphite); color:#fff; font-weight:600; }
-  #loginBtn.in { background:var(--bright); border-color:var(--bright); color:#08210f; font-weight:700; }
-  #count { font-size:12px; color:var(--muted); margin-left:auto; }
-  #halleinfo { font-size:13px; color:var(--bright); font-weight:600; display:none; }
-  /* Bearbeitungsmodus-Banner */
-  #editBanner { display:none; padding:7px 24px; background:linear-gradient(90deg,#1e4d3a,#143439); color:#8fe6bd; font-size:12px; font-weight:600; border-bottom:1px solid var(--bright); }
-  #editBanner.show { display:block; }
-  .main { display:flex; align-items:flex-start; }
-  .wrap { position:relative; margin:18px 24px; overflow:hidden; border:1px solid var(--line); border-radius:14px; flex:1; box-shadow:0 8px 30px rgba(0,0,0,.3); }
-  .planbox { position:relative; width:100%; background:#fff; transform-origin:0 0; transition:transform .55s cubic-bezier(.4,0,.2,1); }
-  .planbox img { width:100%; display:block; }
-  #layers { width:266px; flex-shrink:0; margin:18px 24px 18px 0; background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; transition:.2s; box-shadow:0 8px 30px rgba(0,0,0,.3); }
-  #layers.collapsed { width:0; margin-right:0; opacity:0; border:0; }
-  #layers .lh { padding:14px 16px; font-size:13px; font-weight:700; background:var(--legacy); border-bottom:1px solid var(--line); display:flex; justify-content:space-between; }
-  #layers .lgroup { padding:6px 0; border-bottom:1px solid var(--line); }
-  #layers .grouphead { padding:9px 16px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); }
-  #layers .lrow { display:flex; align-items:center; gap:10px; padding:8px 16px 8px 30px; font-size:13px; cursor:pointer; user-select:none; transition:.12s; }
-  #layers .lrow:hover { background:var(--panel2); }
-  #layers .lrow .cnt { margin-left:auto; font-size:11px; color:var(--muted); background:var(--bg); padding:2px 8px; border-radius:10px; }
-  #layers .sw { position:relative; width:36px; height:20px; border-radius:20px; background:#2c4448; flex-shrink:0; transition:.15s; }
-  #layers .sw::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:var(--muted); transition:.15s; }
-  #layers .on .sw { background:var(--bright); }
-  #layers .on .sw::after { left:18px; background:#fff; }
-  #layers .lrow .clr { width:11px; height:11px; border-radius:3px; flex-shrink:0; }
-  #layers .master { padding-left:16px; font-weight:600; }
-  #layers .master.on .sw { background:var(--bright); }
-  .halle { position:absolute; border:1.5px dashed rgba(86,126,132,.7); border-radius:7px; background:rgba(86,126,132,.10); cursor:pointer; transition:.15s; }
-  .halle:hover { background:rgba(70,179,132,.20); border-color:var(--bright); }
-  .halle .hl { position:absolute; top:5px; left:6px; font-size:11px; font-weight:700; color:#fff; background:var(--legacy); padding:2px 8px; border-radius:5px; white-space:nowrap; }
-  .halle .hngf { position:absolute; top:24px; left:6px; font-size:9px; color:var(--legacy); background:rgba(255,255,255,.85); padding:1px 6px; border-radius:3px; font-weight:600; }
-  .hallelayer.hidden .halle { display:none; }
-  .zone { position:absolute; border:2px solid; border-radius:6px; cursor:pointer; transition:.12s; background:rgba(255,255,255,.03); }
-  .zone:hover { background:rgba(70,179,132,.20); box-shadow:0 0 0 3px rgba(70,179,132,.35); z-index:5; }
-  .zone .tag { position:absolute; top:-9px; left:-2px; font-size:9px; font-weight:700; padding:1px 6px; border-radius:5px; color:#fff; white-space:nowrap; box-shadow:0 1px 3px rgba(0,0,0,.3); }
-  .zone .sdot { position:absolute; top:3px; right:3px; width:10px; height:10px; border-radius:50%; border:2px solid #fff; }
-  .zone.dim { opacity:.10; pointer-events:none; }
-  /* Tooltip */
-  #tip { position:fixed; z-index:150; background:var(--legacy); color:#fff; padding:7px 11px; border-radius:8px; font-size:12px; pointer-events:none; opacity:0; transition:opacity .12s; box-shadow:0 4px 16px rgba(0,0,0,.4); border:1px solid var(--bright); max-width:220px; }
-  #tip.show { opacity:1; }
-  #tip .tt { font-weight:700; } #tip .ts { font-size:11px; color:#bfe3d3; margin-top:2px; }
-  /* Panel */
-  #panel { position:fixed; top:0; right:-460px; width:440px; height:100%; background:var(--panel); border-left:1px solid var(--line); box-shadow:-12px 0 40px rgba(0,0,0,.55); transition:right .25s; z-index:100; overflow-y:auto; }
-  #panel.open { right:0; }
-  #panel .ph { padding:22px; background:var(--legacy); border-bottom:1px solid var(--line); position:relative; }
-  #panel .ph::after { content:''; position:absolute; left:0; right:0; bottom:0; height:3px; background:var(--flow); }
-  #panel .cat { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; }
-  #panel h2 { font-size:23px; margin:5px 0 10px; }
-  #panel .status { display:inline-flex; align-items:center; gap:7px; font-size:12px; padding:4px 12px; border-radius:20px; font-weight:600; }
-  #panel .body { padding:22px; }
-  #panel .row { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line); font-size:13px; gap:12px; }
-  #panel .row .k { color:var(--muted); flex-shrink:0; }
-  #panel .row .v { text-align:right; font-weight:500; }
-  #panel .info { margin:16px 0; padding:13px; background:var(--panel2); border-radius:10px; font-size:13px; line-height:1.55; color:#cfe3df; border-left:3px solid var(--graphite); }
-  #panel h3 { font-size:12px; margin:20px 0 9px; color:var(--bright); text-transform:uppercase; letter-spacing:.5px; }
-  #panel .item { background:var(--panel2); border-radius:8px; padding:9px 11px; margin-bottom:6px; font-size:12px; display:flex; justify-content:space-between; gap:8px; }
-  #panel .item .t { font-weight:600; }
-  #panel .item .badge { font-size:10px; padding:1px 7px; border-radius:10px; font-weight:600; white-space:nowrap; }
-  #panel a.btn, #panel button.btn { display:block; width:100%; text-align:center; margin-top:11px; padding:12px; background:var(--bright); color:#08210f; text-decoration:none; border:none; border-radius:9px; font-size:13px; font-weight:700; cursor:pointer; transition:.15s; }
-  #panel a.btn:hover, #panel button.btn:hover { filter:brightness(1.08); }
-  #panel button.btn.sec { background:var(--panel2); color:var(--bright); border:1px solid var(--bright); }
-  #panel .close { position:absolute; top:18px; right:18px; background:rgba(255,255,255,.1); border:none; color:#fff; font-size:20px; width:32px; height:32px; border-radius:8px; cursor:pointer; }
-  #panel select, #panel input, #panel textarea { width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--txt); padding:9px; border-radius:8px; font-size:13px; margin-top:6px; }
-  #panel select:focus, #panel input:focus { outline:none; border-color:var(--bright); }
-  #panel .editbox { margin-top:14px; padding:14px; background:rgba(70,179,132,.07); border:1px solid rgba(70,179,132,.3); border-radius:10px; }
-  .foot { padding:12px 24px 28px; font-size:11px; color:#5c7975; }
-  /* Login-Modal */
-  #loginBox { position:fixed; inset:0; background:rgba(6,14,15,.75); display:none; align-items:center; justify-content:center; z-index:200; backdrop-filter:blur(3px); }
-  #loginBox.show { display:flex; }
-  #loginBox .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:28px; width:340px; box-shadow:0 20px 60px rgba(0,0,0,.5); }
-  #loginBox .card::before { content:''; display:block; height:4px; background:var(--flow); border-radius:4px; margin:-28px -28px 20px; }
-  #loginBox h3 { margin-bottom:16px; font-size:17px; }
-  #loginBox input { width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--txt); padding:11px; border-radius:9px; margin-bottom:11px; }
-  #loginBox input:focus { outline:none; border-color:var(--bright); }
-  #loginBox .err { color:var(--crit); font-size:12px; min-height:16px; }
-  #loader { position:fixed; inset:0; background:var(--bg); display:flex; flex-direction:column; gap:14px; align-items:center; justify-content:center; color:var(--muted); z-index:300; font-size:14px; }
-  .spin { width:38px; height:38px; border:3px solid var(--line); border-top-color:var(--bright); border-radius:50%; animation:sp 1s linear infinite; }
-  @keyframes sp { to { transform:rotate(360deg); } }
+ :root{--legacy:#143439;--bright:#46B384;--graphite:#567E84;--bg:#0e1a1c;--panel:#12262a;--panel2:#0f2023;--line:#1e3a3f;--txt:#eaf2f0;--muted:#8fa9a8;--flow:linear-gradient(-56deg,#567E84,#46B384);}
+ *{box-sizing:border-box;margin:0;padding:0;} body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);}
+ header{background:var(--legacy);border-bottom:1px solid var(--line);} .hbar{height:4px;background:var(--flow);}
+ .htop{padding:14px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+ h1{font-size:19px;font-weight:700;display:flex;gap:10px;align-items:center;} .logo{width:30px;height:30px;border-radius:7px;background:var(--flow);display:flex;align-items:center;justify-content:center;font-size:16px;}
+ .sub{font-size:12px;color:#9fc4bd;margin-top:2px;}
+ .modeswitch{margin-left:auto;display:flex;gap:4px;background:var(--panel2);padding:4px;border-radius:10px;}
+ .modeswitch button{background:none;border:none;color:var(--muted);padding:7px 16px;border-radius:7px;font-size:13px;cursor:pointer;font-weight:600;}
+ .modeswitch button.active{background:var(--bright);color:#08210f;}
+ .kpis{display:flex;gap:12px;padding:14px 24px;background:var(--panel2);border-bottom:1px solid var(--line);flex-wrap:wrap;}
+ .kpi{flex:1;min-width:130px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 15px;position:relative;overflow:hidden;}
+ .kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--bright);} .kpi.w::before{background:#f5a623;} .kpi.c::before{background:#e0574a;}
+ .kpi .n{font-size:24px;font-weight:750;} .kpi .l{font-size:11px;color:var(--muted);margin-top:5px;text-transform:uppercase;letter-spacing:.4px;}
+ .toolbar{padding:10px 24px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--line);}
+ .toolbar button{background:var(--panel);color:var(--txt);border:1px solid var(--line);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;}
+ .toolbar button:hover{border-color:var(--bright);}
+ .toolbar input{background:var(--panel);border:1px solid var(--line);color:var(--txt);padding:7px 12px;border-radius:8px;font-size:12px;width:200px;}
+ #backbtn{display:none;background:var(--graphite);border-color:var(--graphite);color:#fff;font-weight:600;}
+ #loginBtn.in{background:var(--bright);border-color:var(--bright);color:#08210f;font-weight:700;}
+ #count{font-size:12px;color:var(--muted);margin-left:auto;} #halleinfo{font-size:13px;color:var(--bright);font-weight:600;display:none;}
+ #editBanner{display:none;padding:7px 24px;background:linear-gradient(90deg,#1e4d3a,#143439);color:#8fe6bd;font-size:12px;font-weight:600;border-bottom:1px solid var(--bright);}
+ #editBanner.show{display:block;}
+ .hint{margin:10px 24px 0;color:var(--muted);font-size:13px;}
+ .wrap{margin:14px 24px;position:relative;overflow:hidden;border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.3);}
+ .planbox{position:relative;width:100%;background:#fff;transition:opacity .2s;} .planbox img{width:100%;display:block;}
+ /* Übersicht: Hallen-Kacheln */
+ .halle{position:absolute;border:2px solid var(--graphite);border-radius:8px;background:rgba(86,126,132,.13);cursor:pointer;transition:.15s;}
+ .halle:hover{background:rgba(70,179,132,.24);border-color:var(--bright);box-shadow:0 0 0 3px rgba(70,179,132,.3);}
+ .halle .hcard{position:absolute;top:6px;left:6px;right:6px;}
+ .halle .hl{font-size:12px;font-weight:700;color:#fff;background:var(--legacy);padding:3px 8px;border-radius:5px;display:inline-block;}
+ .halle .hstat{margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;} .halle .pill{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;color:#fff;}
+ .hallelayer.hidden{display:none;}
+ /* Zoom-Ebene: scharfer Crop + Anlagen */
+ #detail{display:none;position:relative;} #detail.show{display:block;}
+ #detailImg{width:100%;display:block;}
+ .zone{position:absolute;border:2px solid;border-radius:6px;cursor:pointer;background:rgba(255,255,255,.04);transition:.12s;}
+ .zone:hover{background:rgba(70,179,132,.22);box-shadow:0 0 0 3px rgba(70,179,132,.35);z-index:5;}
+ .zone .tag{position:absolute;top:-10px;left:-2px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;color:#fff;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.4);}
+ .zone .sdot{position:absolute;top:3px;right:3px;width:11px;height:11px;border-radius:50%;border:2px solid #fff;}
+ /* Liste */
+ #listview{display:none;padding:16px 24px;}
+ .filters{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+ .filters select,.filters input{background:var(--panel);border:1px solid var(--line);color:var(--txt);padding:8px 12px;border-radius:8px;font-size:13px;}
+ table{width:100%;border-collapse:collapse;background:var(--panel);border-radius:12px;overflow:hidden;}
+ th,td{padding:11px 14px;text-align:left;font-size:13px;border-bottom:1px solid var(--line);}
+ th{background:var(--legacy);color:#cfe3df;font-size:11px;text-transform:uppercase;letter-spacing:.4px;cursor:pointer;} th:hover{color:var(--bright);}
+ tr{cursor:pointer;} tr:hover td{background:var(--panel2);}
+ .badge{font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;color:#fff;}
+ .clr{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:6px;}
+ #tip{position:fixed;z-index:150;background:var(--legacy);color:#fff;padding:7px 11px;border-radius:8px;font-size:12px;pointer-events:none;opacity:0;transition:.12s;box-shadow:0 4px 16px rgba(0,0,0,.4);border:1px solid var(--bright);}
+ #tip.show{opacity:1;} #tip .tt{font-weight:700;} #tip .ts{font-size:11px;color:#bfe3d3;margin-top:2px;}
+ #panel{position:fixed;top:0;right:-460px;width:440px;height:100%;background:var(--panel);border-left:1px solid var(--line);box-shadow:-12px 0 40px rgba(0,0,0,.55);transition:right .25s;z-index:100;overflow-y:auto;} #panel.open{right:0;}
+ #panel .ph{padding:22px;background:var(--legacy);position:relative;} #panel .ph::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--flow);}
+ #panel .cat{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;} #panel h2{font-size:23px;margin:5px 0 10px;}
+ #panel .status{display:inline-flex;align-items:center;gap:7px;font-size:12px;padding:4px 12px;border-radius:20px;font-weight:600;}
+ #panel .body{padding:22px;}
+ #panel .row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px;gap:12px;} #panel .row .k{color:var(--muted);} #panel .row .v{text-align:right;font-weight:500;}
+ #panel .info{margin:16px 0;padding:13px;background:var(--panel2);border-radius:10px;font-size:13px;line-height:1.55;color:#cfe3df;border-left:3px solid var(--graphite);}
+ #panel h3{font-size:12px;margin:20px 0 9px;color:var(--bright);text-transform:uppercase;letter-spacing:.5px;}
+ #panel .item{background:var(--panel2);border-radius:8px;padding:9px 11px;margin-bottom:6px;font-size:12px;display:flex;justify-content:space-between;gap:8px;} #panel .item .t{font-weight:600;} #panel .item .badge{font-size:10px;}
+ #panel a.btn,#panel button.btn{display:block;width:100%;text-align:center;margin-top:11px;padding:12px;background:var(--bright);color:#08210f;text-decoration:none;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;} #panel button.btn.sec{background:var(--panel2);color:var(--bright);border:1px solid var(--bright);}
+ #panel .close{position:absolute;top:18px;right:18px;background:rgba(255,255,255,.1);border:none;color:#fff;font-size:20px;width:32px;height:32px;border-radius:8px;cursor:pointer;}
+ #panel select,#panel input{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:9px;border-radius:8px;font-size:13px;margin-top:6px;}
+ #panel .editbox{margin-top:14px;padding:14px;background:rgba(70,179,132,.07);border:1px solid rgba(70,179,132,.3);border-radius:10px;}
+ .foot{padding:12px 24px 28px;font-size:11px;color:#5c7975;}
+ #loginBox{position:fixed;inset:0;background:rgba(6,14,15,.75);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(3px);} #loginBox.show{display:flex;}
+ #loginBox .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px;width:340px;} #loginBox .card::before{content:'';display:block;height:4px;background:var(--flow);border-radius:4px;margin:-28px -28px 20px;}
+ #loginBox input{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:11px;border-radius:9px;margin-bottom:11px;} #loginBox .err{color:#e0574a;font-size:12px;min-height:16px;}
+ #loader{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;color:var(--muted);z-index:300;}
+ .spin{width:38px;height:38px;border:3px solid var(--line);border-top-color:var(--bright);border-radius:50%;animation:sp 1s linear infinite;} @keyframes sp{to{transform:rotate(360deg);}}
 </style></head><body>
 <div id="loader"><div class="spin"></div>Lade Werksdaten…</div>
 
-<header>
-  <div class="hbar"></div>
-  <div class="htop">
-    <div><h1><span class="logo">🏭</span> Werksplan Hagener Feinstahl</h1>
-    <div class="sub">Anlagen- & TGA-Verwaltung · Herdecker Str. 4-10, Hagen</div></div>
-    <div class="legend" id="legend"></div>
-  </div>
-</header>
-
+<header><div class="hbar"></div><div class="htop">
+ <div><h1><span class="logo">🏭</span> Werksplan Hagener Feinstahl</h1><div class="sub">Anlagen- & TGA-Verwaltung · Herdecker Str. 4-10, Hagen</div></div>
+ <div class="modeswitch"><button id="mb-map" class="active" onclick="setMode('map')">🗺 Karte</button><button id="mb-list" onclick="setMode('list')">📋 Liste</button></div>
+</div></header>
 <div class="kpis" id="kpis"></div>
-
 <div id="editBanner">✏️ Bearbeitungsmodus aktiv — Änderungen werden direkt gespeichert.</div>
 
-<div class="toolbar">
+<div id="mapview">
+ <div class="toolbar">
   <button id="backbtn" onclick="zoomOut()">↩ Übersicht</button>
-  <button id="layerBtn" onclick="toggleLayerPanel()">🗂 Layer</button>
   <button id="loginBtn" onclick="loginAction()">🔒 Anmelden</button>
-  <input id="search" placeholder="🔍 Anlage suchen…">
-  <span id="halleinfo"></span>
-  <span id="count"></span>
+  <span id="halleinfo"></span><span id="count"></span>
+ </div>
+ <div class="hint" id="maphint">💡 <b>Klick auf eine Halle</b> öffnet die scharfe Detailansicht mit ihren Anlagen.</div>
+ <div class="wrap">
+  <div class="planbox" id="planbox"><img src="grundriss_web.png" alt="Werksübersicht"><div class="hallelayer" id="hallen"></div></div>
+  <div id="detail"><img id="detailImg" alt="Halle"><div id="zones"></div></div>
+ </div>
 </div>
 
-<div class="main">
-<div class="wrap"><div class="planbox" id="planbox">
-  <img src="grundriss_web.png" alt="Werksgrundriss">
-  <div class="hallelayer" id="hallen"></div>
-  <div id="zones"></div>
-</div></div>
-<div id="layers"><div class="lh">🗂 Layer <span style="font-size:11px;color:var(--muted);font-weight:400">an/aus</span></div>
-  <div id="layerbody"></div></div>
+<div id="listview">
+ <div class="filters">
+  <input id="f-search" placeholder="🔍 Suche…" oninput="renderList()">
+  <select id="f-halle" onchange="renderList()"><option value="">Alle Hallen</option></select>
+  <select id="f-cat" onchange="renderList()"><option value="">Alle Kategorien</option></select>
+  <select id="f-status" onchange="renderList()"><option value="">Alle Status</option><option value="offen">Nur überfällig</option><option value="faellig">Nur fällig</option><option value="ok">Nur OK</option></select>
+ </div>
+ <table><thead><tr><th onclick="sortBy('label')">Anlage</th><th onclick="sortBy('cat')">Kategorie</th><th onclick="sortBy('halle')">Halle</th><th onclick="sortBy('typ')">Typ</th><th onclick="sortBy('status')">Status</th></tr></thead><tbody id="ltbody"></tbody></table>
+ <div class="hint" id="lcount"></div>
 </div>
 
-<div class="foot" id="foot">Live-Daten (Supabase) · Lesen offen, Bearbeiten nach Anmeldung · Intranet (VPN + IP-Whitelist) · Bender Group CI</div>
-
+<div class="foot">Live-Daten (Supabase) · Übersicht → Halle-Zoom (scharf) · Lesen offen, Bearbeiten nach Anmeldung · Bender Group CI</div>
 <div id="tip"></div>
-
-<div id="panel">
-  <button class="close" onclick="closePanel()">×</button>
-  <div class="ph"><div class="cat" id="p-cat"></div><h2 id="p-title"></h2><span class="status" id="p-status"></span></div>
-  <div class="body" id="p-body"></div>
-</div>
-
-<div id="loginBox"><div class="card">
-  <h3>🔒 Anmelden</h3>
-  <input id="li-email" type="email" placeholder="E-Mail" autocomplete="username">
-  <input id="li-pw" type="password" placeholder="Passwort" autocomplete="current-password">
-  <div class="err" id="li-err"></div>
-  <button class="btn" onclick="doLogin()">Anmelden</button>
-  <button class="btn sec" style="margin-top:9px" onclick="document.getElementById('loginBox').classList.remove('show')">Abbrechen</button>
-</div></div>
+<div id="panel"><button class="close" onclick="closePanel()">×</button>
+ <div class="ph"><div class="cat" id="p-cat"></div><h2 id="p-title"></h2><span class="status" id="p-status"></span></div>
+ <div class="body" id="p-body"></div></div>
+<div id="loginBox"><div class="card"><h3>🔒 Anmelden</h3>
+ <input id="li-email" type="email" placeholder="E-Mail" autocomplete="username"><input id="li-pw" type="password" placeholder="Passwort" autocomplete="current-password">
+ <div class="err" id="li-err"></div><button class="btn" onclick="doLogin()">Anmelden</button>
+ <button class="btn sec" style="margin-top:9px" onclick="document.getElementById('loginBox').classList.remove('show')">Abbrechen</button></div></div>
 
 <script>
-const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co", SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vcnRpbGJtbHdveGpldmh3cGltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMTU5NDYsImV4cCI6MjA5OTY5MTk0Nn0.5Uz1yQ9RsvJDJffa70foa-zyKDd3gWfaZmvulCxMppc";
-const sb = supabase.createClient(SB_URL, SB_ANON);
-let HALLEN=[], CATS={}, ZONES=[], hMap={}, PRUEF=[];
-let search="", currentHalle=null, session=null;
-const layerOn={hallen:true};
-const STCOL={ok:'#46B384',faellig:'#f5a623',offen:'#e0574a'};
-const STLBL={ok:'OK',faellig:'Prüfung/Aktion',offen:'Offen'};
+const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vcnRpbGJtbHdveGpldmh3cGltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMTU5NDYsImV4cCI6MjA5OTY5MTk0Nn0.5Uz1yQ9RsvJDJffa70foa-zyKDd3gWfaZmvulCxMppc",RAW="https://raw.githubusercontent.com/IngoBender/werksplan-intranet/main",META={
+  "h1": {
+    "x0": 9.3,
+    "y0": 12.0,
+    "x1": 23.0,
+    "y1": 68.0,
+    "w": 13.7,
+    "h": 56.0,
+    "px": 1400,
+    "py": 2429,
+    "kb": 217
+  },
+  "h2": {
+    "x0": 19.0,
+    "y0": 12.0,
+    "x1": 31.3,
+    "y1": 68.0,
+    "w": 12.3,
+    "h": 56.0,
+    "px": 1400,
+    "py": 2706,
+    "kb": 191
+  },
+  "h3": {
+    "x0": 27.3,
+    "y0": 12.0,
+    "x1": 38.6,
+    "y1": 68.0,
+    "w": 11.3,
+    "h": 56.0,
+    "px": 1400,
+    "py": 2945,
+    "kb": 310
+  },
+  "h41": {
+    "x0": 34.6,
+    "y0": 12.0,
+    "x1": 46.7,
+    "y1": 68.0,
+    "w": 12.1,
+    "h": 56.0,
+    "px": 1400,
+    "py": 2750,
+    "kb": 290
+  },
+  "h5": {
+    "x0": 42.7,
+    "y0": 12.0,
+    "x1": 55.2,
+    "y1": 68.0,
+    "w": 12.5,
+    "h": 56.0,
+    "px": 1400,
+    "py": 2662,
+    "kb": 232
+  },
+  "h6": {
+    "x0": 51.2,
+    "y0": 12.0,
+    "x1": 63.7,
+    "y1": 68.0,
+    "w": 12.5,
+    "h": 56.0,
+    "px": 1400,
+    "py": 2662,
+    "kb": 210
+  },
+  "h7": {
+    "x0": 59.7,
+    "y0": 12.0,
+    "x1": 72.2,
+    "y1": 68.0,
+    "w": 12.5,
+    "h": 56.0,
+    "px": 1400,
+    "py": 2662,
+    "kb": 236
+  },
+  "h8": {
+    "x0": 68.2,
+    "y0": 12.0,
+    "x1": 81.0,
+    "y1": 68.0,
+    "w": 12.8,
+    "h": 56.0,
+    "px": 1400,
+    "py": 2600,
+    "kb": 206
+  },
+  "h9": {
+    "x0": 77.0,
+    "y0": 12.0,
+    "x1": 90.0,
+    "y1": 68.0,
+    "w": 13.0,
+    "h": 56.0,
+    "px": 1400,
+    "py": 2560,
+    "kb": 195
+  },
+  "h42": {
+    "x0": 34.0,
+    "y0": 64.0,
+    "x1": 47.0,
+    "y1": 90.0,
+    "w": 13.0,
+    "h": 26.0,
+    "px": 1400,
+    "py": 1189,
+    "kb": 84
+  },
+  "verw": {
+    "x0": 0,
+    "y0": 22.0,
+    "x1": 13.0,
+    "y1": 52.0,
+    "w": 13.0,
+    "h": 30.0,
+    "px": 1400,
+    "py": 1372,
+    "kb": 190
+  },
+  "sozial": {
+    "x0": 3.0,
+    "y0": 68.0,
+    "x1": 19.0,
+    "y1": 94.0,
+    "w": 16.0,
+    "h": 26.0,
+    "px": 1400,
+    "py": 966,
+    "kb": 163
+  },
+  "durchf": {
+    "x0": 61.0,
+    "y0": 83.0,
+    "x1": 92.0,
+    "y1": 100,
+    "w": 31.0,
+    "h": 17.0,
+    "px": 2090,
+    "py": 487,
+    "kb": 45
+  }
+};
+const sb=supabase.createClient(SB_URL,SB_ANON);
+let HALLEN=[],CATS={},ZONES=[],PRUEF=[],hMap={},mode='map',currentHalle=null,session=null,sortKey='label',sortDir=1;
+const STCOL={ok:'#46B384',faellig:'#f5a623',offen:'#e0574a'},STLBL={ok:'OK',faellig:'fällig',offen:'überfällig'};
 
 async function loadData(){
-  const [h,k,a,p] = await Promise.all([
-    sb.from('hallen').select('*').order('sort'),
-    sb.from('kategorien').select('*'),
-    sb.from('anlagen').select('*'),
-    sb.from('pruefungen').select('*')
-  ]);
-  if(h.error||k.error||a.error){ document.getElementById('loader').innerHTML='❌ '+(h.error||k.error||a.error).message; return false; }
-  PRUEF=p.data||[];
-  ZONES=a.data.map(z=>({...z,cat:z.kategorie_id,halle:z.halle_id,label:z.name,x:z.pos_x,y:z.pos_y,w:z.pos_w,h:z.pos_h,folder:z.sharepoint_ordner}));
-  CATS={}; k.data.forEach(c=>CATS[c.id]={name:c.name,color:c.farbe});
-  for(const c in CATS) layerOn[c]=true;
-  hMap={}; h.data.forEach(x=>hMap[x.id]={...x,ngf:(x.ngf_m2?x.ngf_m2.toLocaleString('de-DE')+' m²':'—'),x:x.pos_x,y:x.pos_y,w:x.pos_w,h:x.pos_h});
-  HALLEN=h.data.map(x=>hMap[x.id]);
-  // Fälligkeit: effektiver Status je Anlage (DB-Status ODER Prüfung <30 Tage)
-  const now=new Date(), soon=new Date(now.getTime()+30*864e5);
-  ZONES.forEach(z=>{
-    z.effStatus=z.status;
-    const ps=PRUEF.filter(x=>x.anlage_id===z.id && x.faellig_am);
-    for(const pr of ps){ const d=new Date(pr.faellig_am);
-      if(d<now && z.effStatus!=='offen') z.effStatus='offen';
-      else if(d<soon && z.effStatus==='ok') z.effStatus='faellig'; }
-  });
-  return true;
+ const [h,k,a,p]=await Promise.all([sb.from('hallen').select('*').order('sort'),sb.from('kategorien').select('*'),sb.from('anlagen').select('*'),sb.from('pruefungen').select('*')]);
+ if(h.error||k.error||a.error){document.getElementById('loader').innerHTML='❌ '+(h.error||k.error||a.error).message;return false;}
+ PRUEF=p.data||[];
+ ZONES=a.data.map(z=>({...z,cat:z.kategorie_id,halle:z.halle_id,label:z.name,x:z.pos_x,y:z.pos_y,w:z.pos_w,h:z.pos_h,folder:z.sharepoint_ordner}));
+ CATS={}; k.data.forEach(c=>CATS[c.id]={name:c.name,color:c.farbe});
+ hMap={}; h.data.forEach(x=>hMap[x.id]={...x,ngf:(x.ngf_m2?x.ngf_m2.toLocaleString('de-DE')+' m²':'—')});
+ HALLEN=h.data.map(x=>hMap[x.id]);
+ const now=new Date(),soon=new Date(now.getTime()+30*864e5);
+ ZONES.forEach(z=>{z.effStatus=z.status; PRUEF.filter(x=>x.anlage_id===z.id&&x.faellig_am).forEach(pr=>{const d=new Date(pr.faellig_am); if(d<now&&z.effStatus!=='offen')z.effStatus='offen'; else if(d<soon&&z.effStatus==='ok')z.effStatus='faellig';});});
+ return true;
+}
+function countHalle(hid){const z=ZONES.filter(x=>x.halle===hid);return{total:z.length,f:z.filter(x=>x.effStatus==='faellig').length,o:z.filter(x=>x.effStatus==='offen').length};}
+function buildKpis(){const t=ZONES.length,ok=ZONES.filter(z=>z.effStatus==='ok').length,f=ZONES.filter(z=>z.effStatus==='faellig').length,o=ZONES.filter(z=>z.effStatus==='offen').length;
+ document.getElementById('kpis').innerHTML=`<div class="kpi"><div class="n">${t}</div><div class="l">Anlagen gesamt</div></div><div class="kpi"><div class="n" style="color:#46B384">${ok}</div><div class="l">Status OK</div></div><div class="kpi ${f?'w':''}"><div class="n" style="color:#f5a623">${f}</div><div class="l">Prüfung fällig</div></div><div class="kpi ${o?'c':''}"><div class="n" style="color:#e0574a">${o}</div><div class="l">Überfällig</div></div><div class="kpi"><div class="n">${HALLEN.length}</div><div class="l">Hallen</div></div>`;}
+function buildLegend(){}
+
+function renderHallen(){const hc=document.getElementById('hallen');hc.innerHTML='';
+ HALLEN.forEach(h=>{const c=countHalle(h.id);const d=document.createElement('div');d.className='halle';
+  d.style.cssText=`left:${h.pos_x}%;top:${h.pos_y}%;width:${h.pos_w}%;height:${h.pos_h}%;`;
+  let pills=`<span class="pill" style="background:#46B384">${c.total} Anl.</span>`;
+  if(c.f)pills+=`<span class="pill" style="background:#f5a623">${c.f}</span>`; if(c.o)pills+=`<span class="pill" style="background:#e0574a">${c.o}</span>`;
+  d.innerHTML=`<div class="hcard"><span class="hl">${h.label}</span><div class="hstat">${pills}</div></div>`;
+  d.onclick=()=>openHalle(h); hc.appendChild(d);});}
+
+function openHalle(h){ currentHalle=h.id; const m=META[h.id]; if(!m)return;
+ document.getElementById('planbox').style.display='none';
+ const det=document.getElementById('detail'); det.classList.add('show');
+ document.getElementById('detailImg').src=`${RAW}/halls/${h.id}.png`;
+ // Anlagen relativ zum Crop-Bereich platzieren
+ const zc=document.getElementById('zones'); zc.innerHTML='';
+ ZONES.filter(z=>z.halle===h.id).forEach(z=>{
+   const cx=(z.x-m.x0)/m.w*100, cy=(z.y-m.y0)/m.h*100, cw=z.w/m.w*100, ch=z.h/m.h*100;
+   const cat=CATS[z.cat]||{color:'#888'};
+   const d=document.createElement('div'); d.className='zone';
+   d.style.cssText=`left:${cx}%;top:${cy}%;width:${cw}%;height:${ch}%;border-color:${cat.color};`;
+   d.innerHTML=`<span class="tag" style="background:${cat.color}">${z.label}</span><span class="sdot" style="background:${STCOL[z.effStatus]}"></span>`;
+   d.onclick=(e)=>{e.stopPropagation();openPanel(z);}; d.onmousemove=(e)=>showTip(e,z); d.onmouseleave=hideTip;
+   zc.appendChild(d);
+ });
+ document.getElementById('backbtn').style.display='inline-block';
+ const hi=document.getElementById('halleinfo'); hi.style.display='inline'; hi.textContent=`📍 ${h.label} · ${h.ngf} · ${countHalle(h.id).total} Anlagen`;
+ document.getElementById('maphint').style.display='none';
+ document.getElementById('count').textContent='';
+}
+function zoomOut(){ currentHalle=null;
+ document.getElementById('detail').classList.remove('show'); document.getElementById('planbox').style.display='block';
+ document.getElementById('backbtn').style.display='none'; document.getElementById('halleinfo').style.display='none';
+ document.getElementById('maphint').style.display='block';
 }
 
-function buildLegend(){
-  const leg=document.getElementById('legend'); leg.innerHTML='';
-  for(const s in STLBL) leg.innerHTML+=`<span><i class="dot" style="background:${STCOL[s]}"></i>${STLBL[s]}</span>`;
-}
-function buildKpis(){
-  const total=ZONES.length;
-  const faellig=ZONES.filter(z=>z.effStatus==='faellig').length;
-  const offen=ZONES.filter(z=>z.effStatus==='offen').length;
-  const ok=ZONES.filter(z=>z.effStatus==='ok').length;
-  const el=document.getElementById('kpis');
-  el.innerHTML=`
-    <div class="kpi"><div class="n">${total}</div><div class="l">Anlagen gesamt</div></div>
-    <div class="kpi"><div class="n" style="color:var(--ok)">${ok}</div><div class="l">Status OK</div></div>
-    <div class="kpi ${faellig?'warn':''}"><div class="n" style="color:var(--warn)">${faellig}</div><div class="l">Prüfung/Aktion fällig</div></div>
-    <div class="kpi ${offen?'crit':''}"><div class="n" style="color:var(--crit)">${offen}</div><div class="l">Offen / überfällig</div></div>
-    <div class="kpi"><div class="n">${HALLEN.length}</div><div class="l">Hallen & Bereiche</div></div>`;
-}
+function showTip(e,z){const t=document.getElementById('tip');t.innerHTML=`<div class="tt">${z.label}</div><div class="ts">${z.typ||''} · ${STLBL[z.effStatus]||''}</div>`;t.style.left=(e.clientX+14)+'px';t.style.top=(e.clientY+14)+'px';t.classList.add('show');}
+function hideTip(){document.getElementById('tip').classList.remove('show');}
 
-function buildLayerPanel(){
-  const lb=document.getElementById('layerbody');
-  const cc={}; for(const k in CATS) cc[k]=0; ZONES.forEach(z=>cc[z.cat]++);
-  let html='<div class="lgroup"><div class="grouphead">🏛 Räumlich</div>'+lrow('hallen','Hallen & Bereiche','#567E84',HALLEN.length)+'</div>';
-  html+='<div class="lgroup"><div class="grouphead">⚙️ Anlagen & TGA</div>';
-  html+=`<div class="lrow master${allOn()?' on':''}" data-master="1"><div class="sw"></div><span>Alle Anlagen</span><span class="cnt">${ZONES.length}</span></div>`;
-  for(const k in CATS) html+=lrow(k,CATS[k].name,CATS[k].color,cc[k]);
-  html+='</div>'; lb.innerHTML=html;
-  lb.querySelectorAll('.lrow').forEach(r=>r.onclick=()=>{
-    if(r.dataset.master){ const t=!allOn(); for(const k in CATS) layerOn[k]=t; }
-    else layerOn[r.dataset.layer]=!layerOn[r.dataset.layer];
-    refreshLayers(); applyLayers();
-  });
-}
-function lrow(key,label,color,count){ return `<div class="lrow${layerOn[key]?' on':''}" data-layer="${key}"><span class="clr" style="background:${color}"></span><div class="sw"></div><span>${label}</span><span class="cnt">${count}</span></div>`; }
-function allOn(){ return Object.keys(CATS).every(k=>layerOn[k]); }
-function refreshLayers(){ document.querySelectorAll('#layerbody .lrow').forEach(r=>{ if(r.dataset.master) r.classList.toggle('on',allOn()); else r.classList.toggle('on',layerOn[r.dataset.layer]); }); }
-function toggleLayerPanel(){ document.getElementById('layers').classList.toggle('collapsed'); }
+function setMode(m){mode=m;document.getElementById('mapview').style.display=m==='map'?'block':'none';document.getElementById('listview').style.display=m==='list'?'block':'none';
+ document.getElementById('mb-map').classList.toggle('active',m==='map');document.getElementById('mb-list').classList.toggle('active',m==='list');if(m==='list')renderList();}
+function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}renderList();}
+function renderList(){const q=document.getElementById('f-search').value.toLowerCase(),fh=document.getElementById('f-halle').value,fc=document.getElementById('f-cat').value,fs=document.getElementById('f-status').value;
+ let rows=ZONES.filter(z=>(!q||z.label.toLowerCase().includes(q)||(z.typ||'').toLowerCase().includes(q))&&(!fh||z.halle===fh)&&(!fc||z.cat===fc)&&(!fs||z.effStatus===fs));
+ rows.sort((a,b)=>{let va=sortKey==='halle'?(hMap[a.halle]||{}).label||'':sortKey==='status'?a.effStatus:a[sortKey]||'',vb=sortKey==='halle'?(hMap[b.halle]||{}).label||'':sortKey==='status'?b.effStatus:b[sortKey]||'';return va>vb?sortDir:va<vb?-sortDir:0;});
+ document.getElementById('ltbody').innerHTML=rows.map(z=>{const cat=CATS[z.cat]||{name:'?',color:'#888'},h=hMap[z.halle];
+  return `<tr onclick='openPanelById("${z.id}")'><td><b>${z.label}</b></td><td><span class="clr" style="background:${cat.color}"></span>${cat.name}</td><td>${h?h.label:'—'}</td><td>${z.typ||''}</td><td><span class="badge" style="background:${STCOL[z.effStatus]}">${STLBL[z.effStatus]}</span></td></tr>`;}).join('');
+ document.getElementById('lcount').textContent=rows.length+' von '+ZONES.length+' Anlagen';}
+function openPanelById(id){const z=ZONES.find(x=>x.id===id);if(z)openPanel(z);}
 
-function renderHallen(){
-  const hc=document.getElementById('hallen'); hc.innerHTML='';
-  HALLEN.forEach(h=>{ const d=document.createElement('div'); d.className='halle';
-    d.style.cssText=`left:${h.x}%;top:${h.y}%;width:${h.w}%;height:${h.h}%;`;
-    d.innerHTML=`<span class="hl">${h.label}</span><span class="hngf">${h.ngf}</span>`;
-    d.onclick=(e)=>{e.stopPropagation();zoomToHalle(h);}; hc.appendChild(d); });
-}
-function renderZones(){
-  const zc=document.getElementById('zones'); zc.innerHTML=''; let n=0;
-  ZONES.forEach(z=>{
-    const cat=CATS[z.cat]||{color:'#888'};
-    let match=layerOn[z.cat]&&(!search||z.label.toLowerCase().includes(search)||(z.typ||'').toLowerCase().includes(search));
-    if(currentHalle&&z.halle!==currentHalle) match=false;
-    const d=document.createElement('div'); d.className='zone'+(match?'':' dim');
-    d.style.cssText+=`left:${z.x}%;top:${z.y}%;width:${z.w}%;height:${z.h}%;border-color:${cat.color};`;
-    d.innerHTML=`<span class="tag" style="background:${cat.color}">${z.label}</span><span class="sdot" style="background:${STCOL[z.effStatus]||'#888'}"></span>`;
-    if(match){ d.onclick=(e)=>{e.stopPropagation();openPanel(z);};
-      d.onmousemove=(e)=>showTip(e,z); d.onmouseleave=hideTip; n++; }
-    zc.appendChild(d);
-  });
-  document.getElementById('count').textContent=n+' Anlagen sichtbar';
-}
-function showTip(e,z){ const t=document.getElementById('tip');
-  t.innerHTML=`<div class="tt">${z.label}</div><div class="ts">${z.typ||''} · ${STLBL[z.effStatus]||''}</div>`;
-  t.style.left=(e.clientX+14)+'px'; t.style.top=(e.clientY+14)+'px'; t.classList.add('show'); }
-function hideTip(){ document.getElementById('tip').classList.remove('show'); }
-function applyLayers(){ document.getElementById('hallen').classList.toggle('hidden',!(layerOn.hallen&&!currentHalle)); renderZones(); }
+function statusPill(st){return `<span class="status" id="p-status" style="background:${STCOL[st]}22;color:${STCOL[st]}"><i style="width:8px;height:8px;border-radius:50%;background:${STCOL[st]};display:inline-block"></i>${STLBL[st]||st}</span>`;}
+async function openPanel(z){const cat=CATS[z.cat]||{name:'?',color:'#888'},h=hMap[z.halle];
+ document.getElementById('p-cat').textContent=cat.name;document.getElementById('p-cat').style.color=cat.color;
+ document.getElementById('p-title').textContent=z.label; document.getElementById('p-status').outerHTML=statusPill(z.effStatus);
+ const sp=z.folder?`<a class="btn" target="_blank" href="https://hafesta.sharepoint.com/sites/BWGGL/Freigegebene%20Dokumente/Maschinen%20und%20Anlagen/Archiv%20(NAS)/Maschinen%20und%20Anlagen/${encodeURIComponent(z.folder)}">📁 SharePoint-Ordner öffnen</a>`:'';
+ let body=`<div class="row"><span class="k">Typ</span><span class="v">${z.typ||'—'}</span></div><div class="row"><span class="k">Halle</span><span class="v">${h?h.label+' · '+h.ngf:'—'}</span></div>`;
+ if(z.info)body+=`<div class="info">${z.info}</div>`;
+ const [pr,wa]=await Promise.all([sb.from('pruefungen').select('*').eq('anlage_id',z.id).order('faellig_am'),sb.from('wartung').select('*').eq('anlage_id',z.id).order('datum',{ascending:false})]);
+ const now=new Date();
+ body+=`<h3>🔍 Prüfungen</h3>`+((pr.data&&pr.data.length)?pr.data.map(p=>{let bs='ok',bl='ok';if(p.faellig_am){const d=new Date(p.faellig_am);if(d<now){bs='offen';bl='überfällig';}else if(d<new Date(now.getTime()+30*864e5)){bs='faellig';bl='bald fällig';}}return `<div class="item"><span><span class="t">${p.art}</span> · fällig ${p.faellig_am||'?'}</span><span class="badge" style="background:${STCOL[bs]}22;color:${STCOL[bs]}">${bl}</span></div>`;}).join(''):'<div class="item" style="color:var(--muted)">keine erfasst</div>');
+ body+=`<h3>🔧 Wartung</h3>`+((wa.data&&wa.data.length)?wa.data.map(w=>`<div class="item"><span class="t">${w.datum||''}</span><span>${w.beschreibung||''}</span></div>`).join(''):'<div class="item" style="color:var(--muted)">keine erfasst</div>');
+ body+=sp;
+ if(session)body+=`<div class="editbox"><h3 style="margin-top:0">✏️ Bearbeiten</h3><label style="font-size:12px;color:var(--muted)">Status</label><select id="ed-status">${['ok','faellig','offen'].map(s=>`<option value="${s}"${z.status===s?' selected':''}>${STLBL[s]}</option>`).join('')}</select><button class="btn" onclick="saveStatus('${z.id}')">Status speichern</button><label style="font-size:12px;color:var(--muted);margin-top:12px;display:block">Neue Prüfung</label><input id="ed-art" placeholder="Art (UVV/TÜV/CE…)"><input id="ed-faellig" type="date"><button class="btn sec" onclick="addPruef('${z.id}')">Prüfung hinzufügen</button></div>`;
+ document.getElementById('p-body').innerHTML=body; document.getElementById('panel').classList.add('open');}
+function closePanel(){document.getElementById('panel').classList.remove('open');}
+async function saveStatus(id){const v=document.getElementById('ed-status').value;const {error}=await sb.from('anlagen').update({status:v,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert('Fehler: '+error.message);return;}await loadData();buildKpis();if(currentHalle)openHalle(hMap[currentHalle]);if(mode==='list')renderList();openPanel(ZONES.find(x=>x.id===id));}
+async function addPruef(id){const art=document.getElementById('ed-art').value.trim(),f=document.getElementById('ed-faellig').value||null;if(!art){alert('Art angeben');return;}const {error}=await sb.from('pruefungen').insert({anlage_id:id,art,faellig_am:f});if(error){alert('Fehler: '+error.message);return;}await loadData();buildKpis();openPanel(ZONES.find(x=>x.id===id));}
 
-function zoomToHalle(h){ currentHalle=h.id; const pad=4;
-  const scale=Math.min(100/(h.w+pad*2),100/(h.h+pad*2),4.5);
-  const tx=(50/scale)-(h.x+h.w/2), ty=(50/scale)-(h.y+h.h/2);
-  document.getElementById('planbox').style.transform=`scale(${scale}) translate(${tx}%,${ty}%)`;
-  document.getElementById('hallen').classList.add('hidden');
-  document.getElementById('backbtn').style.display='inline-block';
-  const hi=document.getElementById('halleinfo'); hi.style.display='inline'; hi.textContent=`📍 ${h.label} · ${h.ngf} · ${h.nutzung||''}`;
-  renderZones();
-}
-function zoomOut(){ currentHalle=null; document.getElementById('planbox').style.transform='';
-  document.getElementById('backbtn').style.display='none'; document.getElementById('halleinfo').style.display='none'; applyLayers(); }
+function loginAction(){if(session){sb.auth.signOut().then(()=>{session=null;updateLogin();closePanel();});}else document.getElementById('loginBox').classList.add('show');}
+async function doLogin(){const email=document.getElementById('li-email').value,pw=document.getElementById('li-pw').value;const {data,error}=await sb.auth.signInWithPassword({email,password:pw});if(error){document.getElementById('li-err').textContent=error.message;return;}session=data.session;document.getElementById('loginBox').classList.remove('show');updateLogin();}
+function updateLogin(){const b=document.getElementById('loginBtn'),bn=document.getElementById('editBanner');if(session){b.textContent='✓ Angemeldet';b.classList.add('in');bn.classList.add('show');}else{b.textContent='🔒 Anmelden';b.classList.remove('in');bn.classList.remove('show');}}
 
-function statusPill(st){ return `<span class="status" style="background:${STCOL[st]}22;color:${STCOL[st]}"><i class="dot" style="background:${STCOL[st]}"></i>${STLBL[st]||st}</span>`; }
-
-async function openPanel(z){
-  const cat=CATS[z.cat]||{name:'?',color:'#888'}, h=hMap[z.halle];
-  document.getElementById('p-cat').textContent=cat.name; document.getElementById('p-cat').style.color=cat.color;
-  document.getElementById('p-title').textContent=z.label;
-  document.getElementById('p-status').outerHTML=statusPill(z.effStatus).replace('class="status"','class="status" id="p-status"');
-  const sp=z.folder?`<a class="btn" target="_blank" href="https://hafesta.sharepoint.com/sites/BWGGL/Freigegebene%20Dokumente/Maschinen%20und%20Anlagen/Archiv%20(NAS)/Maschinen%20und%20Anlagen/${encodeURIComponent(z.folder)}">📁 SharePoint-Ordner öffnen</a>`:'';
-  let body=`<div class="row"><span class="k">Typ</span><span class="v">${z.typ||'—'}</span></div>
-    <div class="row"><span class="k">Halle</span><span class="v">${h?h.label+' · '+h.ngf:'—'}</span></div>`;
-  if(z.info) body+=`<div class="info">${z.info}</div>`;
-  const [pr,wa]=await Promise.all([
-    sb.from('pruefungen').select('*').eq('anlage_id',z.id).order('faellig_am'),
-    sb.from('wartung').select('*').eq('anlage_id',z.id).order('datum',{ascending:false}) ]);
-  const now=new Date();
-  body+=`<h3>🔍 Prüfungen</h3>`;
-  body+=(pr.data&&pr.data.length)?pr.data.map(p=>{
-    let bs='ok',bl='ok'; if(p.faellig_am){const d=new Date(p.faellig_am); if(d<now){bs='offen';bl='überfällig';} else if(d<new Date(now.getTime()+30*864e5)){bs='faellig';bl='bald fällig';}}
-    return `<div class="item"><span><span class="t">${p.art}</span> · fällig ${p.faellig_am||'?'}</span><span class="badge" style="background:${STCOL[bs]}22;color:${STCOL[bs]}">${bl}</span></div>`;
-  }).join(''):'<div class="item" style="color:var(--muted)">keine erfasst</div>';
-  body+=`<h3>🔧 Wartung</h3>`;
-  body+=(wa.data&&wa.data.length)?wa.data.map(w=>`<div class="item"><span class="t">${w.datum||''}</span><span>${w.beschreibung||''}</span></div>`).join(''):'<div class="item" style="color:var(--muted)">keine erfasst</div>';
-  body+=sp;
-  if(session){ body+=`<div class="editbox"><h3 style="margin-top:0">✏️ Bearbeiten</h3>
-    <label style="font-size:12px;color:var(--muted)">Status</label>
-    <select id="ed-status">${['ok','faellig','offen'].map(s=>`<option value="${s}"${z.status===s?' selected':''}>${STLBL[s]}</option>`).join('')}</select>
-    <button class="btn" onclick="saveStatus('${z.id}')">Status speichern</button>
-    <label style="font-size:12px;color:var(--muted);margin-top:12px;display:block">Neue Prüfung</label>
-    <input id="ed-art" placeholder="Art (UVV/TÜV/CE…)"><input id="ed-faellig" type="date">
-    <button class="btn sec" onclick="addPruef('${z.id}')">Prüfung hinzufügen</button></div>`; }
-  document.getElementById('p-body').innerHTML=body;
-  document.getElementById('panel').classList.add('open');
-}
-function closePanel(){ document.getElementById('panel').classList.remove('open'); }
-
-async function saveStatus(id){ const v=document.getElementById('ed-status').value;
-  const {error}=await sb.from('anlagen').update({status:v,updated_at:new Date().toISOString()}).eq('id',id);
-  if(error){ alert('Fehler: '+error.message); return; }
-  await loadData(); buildKpis(); renderZones(); openPanel(ZONES.find(x=>x.id===id)); }
-async function addPruef(id){ const art=document.getElementById('ed-art').value.trim(), f=document.getElementById('ed-faellig').value||null;
-  if(!art){ alert('Art angeben'); return; }
-  const {error}=await sb.from('pruefungen').insert({anlage_id:id,art,faellig_am:f});
-  if(error){ alert('Fehler: '+error.message); return; }
-  await loadData(); buildKpis(); renderZones(); openPanel(ZONES.find(x=>x.id===id)); }
-
-function loginAction(){ if(session){ sb.auth.signOut().then(()=>{session=null;updateLogin();closePanel();}); } else document.getElementById('loginBox').classList.add('show'); }
-async function doLogin(){ const email=document.getElementById('li-email').value,pw=document.getElementById('li-pw').value;
-  const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
-  if(error){ document.getElementById('li-err').textContent=error.message; return; }
-  session=data.session; document.getElementById('loginBox').classList.remove('show'); updateLogin(); }
-function updateLogin(){ const b=document.getElementById('loginBtn'), bn=document.getElementById('editBanner');
-  if(session){ b.textContent='✓ Angemeldet'; b.classList.add('in'); bn.classList.add('show'); }
-  else { b.textContent='🔒 Anmelden'; b.classList.remove('in'); bn.classList.remove('show'); } }
-
-document.getElementById('search').oninput=e=>{ search=e.target.value.toLowerCase(); renderZones(); };
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closePanel(); document.getElementById('loginBox').classList.remove('show'); if(currentHalle) zoomOut(); } });
-
-(async()=>{ if(!await loadData()) return;
-  const {data}=await sb.auth.getSession(); session=data.session; updateLogin();
-  buildLegend(); buildKpis(); buildLayerPanel(); renderHallen(); applyLayers();
-  document.getElementById('loader').style.display='none';
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePanel();document.getElementById('loginBox').classList.remove('show');if(currentHalle)zoomOut();}});
+(async()=>{if(!await loadData())return;
+ HALLEN.forEach(h=>document.getElementById('f-halle').innerHTML+=`<option value="${h.id}">${h.label}</option>`);
+ for(const k in CATS)document.getElementById('f-cat').innerHTML+=`<option value="${k}">${CATS[k].name}</option>`;
+ const {data}=await sb.auth.getSession();session=data.session;updateLogin();
+ buildKpis();renderHallen();
+ document.getElementById('loader').style.display='none';
 })();
-</script>
-</body></html>
+</script></body></html>
