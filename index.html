@@ -36,9 +36,11 @@
  .halle .hl{font-size:12px;font-weight:700;color:#fff;background:var(--legacy);padding:3px 8px;border-radius:5px;display:inline-block;}
  .halle .hstat{margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;} .halle .pill{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;color:#fff;}
  .hallelayer.hidden{display:none;}
- /* Zoom-Ebene: scharfer Crop + Anlagen */
- #detail{display:none;position:relative;} #detail.show{display:block;}
- #detailImg{width:100%;display:block;}
+ /* Zoom-Ebene: scharfer Crop + Anlagen — Bild passt komplett in den Viewport (kein Übergroß-Zoom) */
+ #detail{display:none;position:relative;text-align:center;} #detail.show{display:block;}
+ #detailWrap{position:relative;display:inline-block;max-width:100%;}
+ #detailImg{display:block;max-height:76vh;max-width:100%;width:auto;margin:0 auto;}
+ #detailWrap #zones{position:absolute;top:0;left:0;width:100%;height:100%;}
  .zone{position:absolute;border:2px solid;border-radius:6px;cursor:pointer;background:rgba(255,255,255,.04);transition:.12s;}
  .zone:hover{background:rgba(70,179,132,.22);box-shadow:0 0 0 3px rgba(70,179,132,.35);z-index:5;}
  .zone .tag{position:absolute;top:-10px;left:-2px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;color:#fff;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.4);}
@@ -93,7 +95,7 @@
  <div class="hint" id="maphint">💡 <b>Klick auf eine Halle</b> öffnet die scharfe Detailansicht mit ihren Anlagen.</div>
  <div class="wrap">
   <div class="planbox" id="planbox"><img src="grundriss_web.png" alt="Werksübersicht" id="ovImg"><svg id="hallen" class="hallelayer" style="position:absolute;top:0;left:0;width:100%;height:100%"></svg></div>
-  <div id="detail"><img id="detailImg" alt="Halle"><div id="zones"></div></div>
+  <div id="detail"><div id="detailWrap"><img id="detailImg" alt="Halle"><div id="zones"></div></div></div>
  </div>
 </div>
 
