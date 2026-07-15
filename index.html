@@ -36,10 +36,10 @@
  .halle .hl{font-size:12px;font-weight:700;color:#fff;background:var(--legacy);padding:3px 8px;border-radius:5px;display:inline-block;}
  .halle .hstat{margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;} .halle .pill{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;color:#fff;}
  .hallelayer.hidden{display:none;}
- /* Zoom-Ebene: scharfer Crop + Anlagen — Bild passt komplett in den Viewport (kein Übergroß-Zoom) */
+ /* Zoom-Ebene: scharfer Crop + Anlagen — schmale Hallen um 90° gedreht (quer, füllt Breite) */
  #detail{display:none;position:relative;text-align:center;} #detail.show{display:block;}
- #detailWrap{position:relative;display:inline-block;max-width:100%;}
- #detailImg{display:block;max-height:76vh;max-width:100%;width:auto;margin:0 auto;}
+ #detailWrap{position:relative;display:inline-block;transform-origin:center center;}
+ #detailImg{display:block;}
  #detailWrap #zones{position:absolute;top:0;left:0;width:100%;height:100%;}
  .zone{position:absolute;border:2px solid;border-radius:6px;cursor:pointer;background:rgba(255,255,255,.04);transition:.12s;}
  .zone:hover{background:rgba(70,179,132,.22);box-shadow:0 0 0 3px rgba(70,179,132,.35);z-index:5;}
@@ -130,30 +130,31 @@ const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI
     "w": 10.86,
     "h": 48.42,
     "px": 1400,
-    "py": 2650,
-    "kb": 210,
+    "py": 740,
+    "kb": 92,
     "relpoly": [
       [
-        18.88,
-        4.13
+        95.87,
+        18.88
       ],
       [
-        81.58,
-        4.36
+        95.64,
+        81.58
       ],
       [
-        81.58,
-        95.87
+        4.13,
+        81.58
       ],
       [
-        18.88,
-        95.87
+        4.13,
+        18.88
       ],
       [
-        18.42,
-        95.87
+        4.13,
+        18.42
       ]
-    ]
+    ],
+    "rot": true
   },
   "h2": {
     "x0": 18.79,
@@ -162,43 +163,44 @@ const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI
     "y1": 55.56,
     "w": 11.0,
     "h": 50.97,
-    "px": 1400,
-    "py": 2754,
-    "kb": 196,
+    "px": 1459,
+    "py": 742,
+    "kb": 76,
     "relpoly": [
       [
-        19.82,
-        9.34
+        90.66,
+        19.82
       ],
       [
-        18.18,
-        3.92
+        96.08,
+        18.18
       ],
       [
-        39.91,
-        4.75
+        95.25,
+        39.91
       ],
       [
-        40.73,
-        8.08
+        91.92,
+        40.73
       ],
       [
-        81.82,
-        9.14
+        90.86,
+        81.82
       ],
       [
-        81.0,
-        96.08
+        3.92,
+        81.0
       ],
       [
-        19.82,
-        96.08
+        3.92,
+        19.82
       ],
       [
-        19.82,
-        96.08
+        3.92,
+        19.82
       ]
-    ]
+    ],
+    "rot": true
   },
   "h3": {
     "x0": 25.88,
@@ -208,30 +210,31 @@ const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI
     "w": 12.25,
     "h": 47.14,
     "px": 1400,
-    "py": 2287,
-    "kb": 219,
+    "py": 858,
+    "kb": 120,
     "relpoly": [
       [
-        17.06,
-        4.24
+        95.76,
+        17.06
       ],
       [
-        83.67,
-        4.24
+        95.76,
+        83.67
       ],
       [
-        83.67,
-        95.76
+        4.24,
+        83.67
       ],
       [
-        16.33,
-        95.52
+        4.48,
+        16.33
       ],
       [
-        16.33,
-        95.52
+        4.48,
+        16.33
       ]
-    ]
+    ],
+    "rot": true
   },
   "h41": {
     "x0": 34.31,
@@ -240,31 +243,32 @@ const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI
     "y1": 67.67,
     "w": 12.25,
     "h": 60.11,
-    "px": 1400,
-    "py": 2916,
-    "kb": 289,
+    "px": 1720,
+    "py": 826,
+    "kb": 157,
     "relpoly": [
       [
-        16.73,
-        3.69
+        96.31,
+        16.73
       ],
       [
-        83.67,
-        3.33
+        96.67,
+        83.67
       ],
       [
-        83.67,
-        96.14
+        3.86,
+        83.67
       ],
       [
-        16.33,
-        96.67
+        3.33,
+        16.33
       ],
       [
-        16.33,
-        96.67
+        3.33,
+        16.33
       ]
-    ]
+    ],
+    "rot": true
   },
   "h5": {
     "x0": 42.75,
@@ -273,31 +277,32 @@ const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI
     "y1": 86.06,
     "w": 12.48,
     "h": 78.28,
-    "px": 1400,
-    "py": 3727,
-    "kb": 299,
+    "px": 2240,
+    "py": 842,
+    "kb": 147,
     "relpoly": [
       [
-        16.03,
-        2.68
+        97.32,
+        16.03
       ],
       [
-        83.97,
-        2.55
+        97.45,
+        83.97
       ],
       [
-        82.85,
-        97.45
+        2.55,
+        82.85
       ],
       [
-        17.07,
-        97.16
+        2.84,
+        17.07
       ],
       [
-        17.07,
-        97.16
+        2.84,
+        17.07
       ]
-    ]
+    ],
+    "rot": true
   },
   "h6": {
     "x0": 51.23,
@@ -306,31 +311,32 @@ const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI
     "y1": 86.48,
     "w": 12.38,
     "h": 78.6,
-    "px": 1400,
-    "py": 3773,
-    "kb": 296,
+    "px": 2249,
+    "py": 835,
+    "kb": 115,
     "relpoly": [
       [
-        16.88,
-        2.68
+        97.32,
+        16.88
       ],
       [
-        83.84,
-        2.54
+        97.46,
+        83.84
       ],
       [
-        82.07,
-        97.46
+        2.54,
+        82.07
       ],
       [
-        16.16,
-        96.78
+        3.22,
+        16.16
       ],
       [
-        16.16,
-        96.78
+        3.22,
+        16.16
       ]
-    ]
+    ],
+    "rot": true
   },
   "h7": {
     "x0": 59.71,
@@ -339,31 +345,32 @@ const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI
     "y1": 85.95,
     "w": 12.16,
     "h": 78.07,
-    "px": 1400,
-    "py": 3815,
-    "kb": 349,
+    "px": 2234,
+    "py": 820,
+    "kb": 145,
     "relpoly": [
       [
-        16.78,
-        2.56
+        97.44,
+        16.78
       ],
       [
-        82.81,
-        2.56
+        97.44,
+        82.81
       ],
       [
-        83.55,
-        97.3
+        2.7,
+        83.55
       ],
       [
-        16.78,
-        97.44
+        2.56,
+        16.78
       ],
       [
-        16.45,
-        97.44
+        2.56,
+        16.45
       ]
-    ]
+    ],
+    "rot": true
   },
   "h8": {
     "x0": 68.09,
@@ -372,31 +379,32 @@ const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI
     "y1": 86.06,
     "w": 12.39,
     "h": 78.07,
-    "px": 1400,
-    "py": 3744,
-    "kb": 304,
+    "px": 2234,
+    "py": 836,
+    "kb": 145,
     "relpoly": [
       [
-        16.14,
-        2.56
+        97.44,
+        16.14
       ],
       [
-        83.86,
-        2.7
+        97.3,
+        83.86
       ],
       [
-        82.81,
-        97.3
+        2.7,
+        82.81
       ],
       [
-        16.55,
-        97.44
+        2.56,
+        16.55
       ],
       [
-        16.55,
-        97.44
+        2.56,
+        16.55
       ]
-    ]
+    ],
+    "rot": true
   },
   "h9": {
     "x0": 76.66,
@@ -405,31 +413,32 @@ const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI
     "y1": 86.06,
     "w": 12.48,
     "h": 78.18,
-    "px": 1400,
-    "py": 3722,
-    "kb": 319,
+    "px": 2237,
+    "py": 842,
+    "kb": 150,
     "relpoly": [
       [
-        16.83,
-        2.56
+        97.44,
+        16.83
       ],
       [
-        83.97,
-        2.56
+        97.44,
+        83.97
       ],
       [
-        83.65,
-        97.44
+        2.56,
+        83.65
       ],
       [
-        16.03,
-        97.16
+        2.84,
+        16.03
       ],
       [
-        16.03,
-        97.16
+        2.84,
+        16.03
       ]
-    ]
+    ],
+    "rot": true
   },
   "h42": {
     "x0": 34.36,
@@ -462,7 +471,8 @@ const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI
         16.27,
         90.98
       ]
-    ]
+    ],
+    "rot": false
   },
   "verw": {
     "x0": 3.23,
@@ -495,7 +505,8 @@ const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI
         16.08,
         90.83
       ]
-    ]
+    ],
+    "rot": false
   },
   "sozial": {
     "x0": 6.48,
@@ -532,7 +543,8 @@ const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI
         28.1,
         87.98
       ]
-    ]
+    ],
+    "rot": false
   },
   "durchf": {
     "x0": 59.43,
@@ -561,7 +573,8 @@ const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI
         7.68,
         87.86
       ]
-    ]
+    ],
+    "rot": false
   },
   "drahtvorb": {
     "x0": 20.1,
@@ -594,7 +607,8 @@ const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI
         20.0,
         88.28
       ]
-    ]
+    ],
+    "rot": false
   },
   "zwischenlager": {
     "x0": 12.66,
@@ -627,7 +641,8 @@ const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI
         18.56,
         87.08
       ]
-    ]
+    ],
+    "rot": false
   }
 };
 const sb=supabase.createClient(SB_URL,SB_ANON);
@@ -678,14 +693,23 @@ function openHalle(h){ currentHalle=h.id; const m=META[h.id]; if(!m)return;
  document.getElementById('planbox').style.display='none';
  const det=document.getElementById('detail'); det.classList.add('show');
  document.getElementById('detailImg').src=`${RAW}/halls/${h.id}.png`;
- // Crop-Bild auf echte Polygon-Form clippen (falls relpoly vorhanden)
+ // Crop ist serverseitig schon rotiert (schmale Hallen quer). Bild passt in Viewport.
  const di=document.getElementById('detailImg');
  if(m.relpoly&&m.relpoly.length>=3){ di.style.clipPath='polygon('+m.relpoly.map(([x,y])=>`${x}% ${y}%`).join(',')+')'; }
  else di.style.clipPath='';
- // Anlagen relativ zum Crop-Bereich platzieren
+ const wrap=document.getElementById('detailWrap');
+ wrap.style.transform=''; wrap.style.width=''; wrap.style.height='';
+ document.getElementById('detail').style.height='';
+ di.style.width='auto'; di.style.height='auto'; di.style.maxWidth='100%'; di.style.maxHeight='72vh';
+ // Anlagen relativ zum (ggf. rotierten) Crop platzieren. relpoly/rot sind bereits konsistent.
  const zc=document.getElementById('zones'); zc.innerHTML='';
  ZONES.filter(z=>z.halle===h.id).forEach(z=>{
-   const cx=(z.x-m.x0)/m.w*100, cy=(z.y-m.y0)/m.h*100, cw=z.w/m.w*100, ch=z.h/m.h*100;
+   // Zonen-Mitte + Größe im Original-Crop-Raster
+   let rx=(z.x-m.x0)/m.w*100, ry=(z.y-m.y0)/m.h*100, rw=z.w/m.w*100, rh=z.h/m.h*100;
+   let cx,cy,cw,ch;
+   if(m.rot){ // 90° CW: (rx,ry)->(100-ry-rh, rx); Breite/Höhe tauschen
+     cx=100-ry-rh; cy=rx; cw=rh; ch=rw;
+   } else { cx=rx; cy=ry; cw=rw; ch=rh; }
    const cat=CATS[z.cat]||{color:'#888'};
    const d=document.createElement('div'); d.className='zone';
    d.style.cssText=`left:${cx}%;top:${cy}%;width:${cw}%;height:${ch}%;border-color:${cat.color};`;
