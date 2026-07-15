@@ -1,30 +1,32 @@
 <!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Werksplan Hagener Feinstahl — Anlagen-Dashboard (Prototyp)</title>
+<title>Werksplan Hagener Feinstahl — Anlagenverwaltung</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   * { box-sizing:border-box; margin:0; padding:0; }
   body { font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:#0f1420; color:#e8edf5; }
   header { padding:14px 22px; background:#161d2e; border-bottom:1px solid #2a3450; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
   header h1 { font-size:18px; font-weight:650; }
   header .sub { font-size:12px; color:#8b96ad; }
-  .legend { display:flex; gap:14px; flex-wrap:wrap; margin-left:auto; }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; margin-left:auto; align-items:center; }
   .legend span { font-size:12px; display:flex; align-items:center; gap:5px; }
   .dot { width:11px; height:11px; border-radius:3px; display:inline-block; }
   .toolbar { padding:8px 22px; background:#12182740; display:flex; gap:10px; align-items:center; flex-wrap:wrap; border-bottom:1px solid #232d45; }
   .toolbar button { background:#1e2740; color:#cdd6e8; border:1px solid #34406090; padding:5px 12px; border-radius:6px; font-size:12px; cursor:pointer; }
   .toolbar input { background:#1a2135; border:1px solid #34406090; color:#e8edf5; padding:5px 10px; border-radius:6px; font-size:12px; width:180px; }
   #backbtn { display:none; background:#d8842d; border-color:#d8842d; color:#fff; font-weight:600; }
-  #layerBtn { background:#243450; border-color:#3a5480; }
-  /* Layout: Karte + Layer-Panel nebeneinander */
+  #loginBtn { background:#243450; border-color:#3a5480; }
+  #loginBtn.in { background:#22c55e; border-color:#22c55e; color:#08210f; font-weight:600; }
   .main { display:flex; align-items:flex-start; }
   .wrap { position:relative; margin:16px 22px; overflow:hidden; border:1px solid #2a3450; border-radius:10px; flex:1; }
-  /* Layer-Seitenleiste */
-  #layers { width:262px; flex-shrink:0; margin:16px 22px 16px 0; background:#141b2c; border:1px solid #2a3450; border-radius:10px; overflow:hidden; transition:width .2s, margin .2s, opacity .2s; }
+  .planbox { position:relative; width:100%; background:#fff; transform-origin:0 0; transition:transform .5s cubic-bezier(.4,0,.2,1); }
+  .planbox img { width:100%; display:block; }
+  #layers { width:262px; flex-shrink:0; margin:16px 22px 16px 0; background:#141b2c; border:1px solid #2a3450; border-radius:10px; overflow:hidden; transition:width .2s,margin .2s,opacity .2s; }
   #layers.collapsed { width:0; margin-right:0; opacity:0; border:0; }
-  #layers .lh { padding:12px 16px; font-size:13px; font-weight:650; background:#1a2338; border-bottom:1px solid #2a3450; display:flex; justify-content:space-between; align-items:center; }
+  #layers .lh { padding:12px 16px; font-size:13px; font-weight:650; background:#1a2338; border-bottom:1px solid #2a3450; display:flex; justify-content:space-between; }
   #layers .lgroup { padding:6px 0; border-bottom:1px solid #212a41; }
-  #layers .grouphead { display:flex; align-items:center; gap:8px; padding:8px 16px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:#8b96ad; }
+  #layers .grouphead { padding:8px 16px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:#8b96ad; }
   #layers .lrow { display:flex; align-items:center; gap:10px; padding:7px 16px 7px 30px; font-size:13px; cursor:pointer; user-select:none; }
   #layers .lrow:hover { background:#1a2338; }
   #layers .lrow .cnt { margin-left:auto; font-size:11px; color:#6b7690; background:#0f1420; padding:1px 7px; border-radius:10px; }
@@ -36,22 +38,17 @@
   #layers .master { padding-left:16px; font-weight:600; color:#e8edf5; }
   #layers .master .sw { background:#2f6b4a; }
   #layers .master.on .sw { background:#22c55e; }
-  .planbox { position:relative; width:100%; background:#fff; transform-origin:0 0; transition:transform .5s cubic-bezier(.4,0,.2,1); }
-  .planbox img { width:100%; display:block; }
-  /* Hallen-Layer */
   .halle { position:absolute; border:1.5px dashed #b9c4dd88; border-radius:6px; background:rgba(90,120,180,.10); cursor:pointer; transition:all .15s; }
   .halle:hover { background:rgba(90,150,220,.28); border-color:#7fb0ff; }
   .halle .hl { position:absolute; top:4px; left:6px; font-size:11px; font-weight:700; color:#1a2a4a; background:#dbe6ff; padding:2px 7px; border-radius:4px; white-space:nowrap; }
   .halle .hngf { position:absolute; top:22px; left:6px; font-size:9px; color:#33456a; background:#eef3ff; padding:1px 6px; border-radius:3px; }
   .hallelayer.hidden .halle { display:none; }
-  /* Anlagen */
   .zone { position:absolute; border:2px solid; border-radius:5px; cursor:pointer; transition:all .12s; background:rgba(255,255,255,.02); }
   .zone:hover { background:rgba(255,255,255,.18); box-shadow:0 0 0 3px rgba(255,255,255,.25); z-index:5; }
   .zone .tag { position:absolute; top:-9px; left:-2px; font-size:9px; font-weight:600; padding:1px 5px; border-radius:4px; color:#fff; white-space:nowrap; }
   .zone .sdot { position:absolute; top:2px; right:2px; width:9px; height:9px; border-radius:50%; border:1.5px solid #fff; }
   .zone.dim { opacity:.12; pointer-events:none; }
-  /* Panel */
-  #panel { position:fixed; top:0; right:-430px; width:410px; height:100%; background:#141b2c; border-left:1px solid #2a3450; box-shadow:-8px 0 30px rgba(0,0,0,.5); transition:right .22s; z-index:100; overflow-y:auto; }
+  #panel { position:fixed; top:0; right:-440px; width:420px; height:100%; background:#141b2c; border-left:1px solid #2a3450; box-shadow:-8px 0 30px rgba(0,0,0,.5); transition:right .22s; z-index:100; overflow-y:auto; }
   #panel.open { right:0; }
   #panel .ph { padding:20px; border-bottom:1px solid #2a3450; }
   #panel .ph .cat { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
@@ -62,23 +59,36 @@
   #panel .row .k { color:#8b96ad; flex-shrink:0; }
   #panel .row .v { text-align:right; }
   #panel .info { margin:14px 0; padding:12px; background:#0f1420; border-radius:8px; font-size:13px; line-height:1.5; color:#c4cde0; }
-  #panel a.btn { display:block; text-align:center; margin-top:14px; padding:11px; background:#2d68d8; color:#fff; text-decoration:none; border-radius:8px; font-size:13px; font-weight:600; }
-  #panel a.btn:hover { background:#3b78ea; }
+  #panel h3 { font-size:13px; margin:18px 0 8px; color:#8b96ad; text-transform:uppercase; letter-spacing:.4px; }
+  #panel .item { background:#0f1420; border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:12px; }
+  #panel .item .t { font-weight:600; }
+  #panel a.btn, #panel button.btn { display:block; width:100%; text-align:center; margin-top:10px; padding:11px; background:#2d68d8; color:#fff; text-decoration:none; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; }
+  #panel button.btn.edit { background:#243a2e; border:1px solid #2f6b4a; color:#8fe0b0; }
   #panel .close { position:absolute; top:16px; right:16px; background:none; border:none; color:#8b96ad; font-size:24px; cursor:pointer; }
+  #panel select, #panel input, #panel textarea { width:100%; background:#0f1420; border:1px solid #34406090; color:#e8edf5; padding:8px; border-radius:6px; font-size:13px; margin-top:6px; }
   .foot { padding:10px 22px 24px; font-size:11px; color:#5b6478; }
   #count { font-size:12px; color:#8b96ad; margin-left:auto; }
   #halleinfo { font-size:13px; color:#ffd9a8; font-weight:600; display:none; }
+  #loginBox { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:200; }
+  #loginBox.show { display:flex; }
+  #loginBox .card { background:#141b2c; border:1px solid #2a3450; border-radius:12px; padding:24px; width:320px; }
+  #loginBox h3 { margin-bottom:14px; }
+  #loginBox input { width:100%; background:#0f1420; border:1px solid #34406090; color:#e8edf5; padding:9px; border-radius:6px; margin-bottom:10px; }
+  #loginBox .err { color:#ff6b6b; font-size:12px; min-height:16px; }
+  #loader { position:fixed; inset:0; background:#0f1420; display:flex; align-items:center; justify-content:center; color:#8b96ad; z-index:300; font-size:14px; }
 </style></head><body>
+<div id="loader">⏳ Lade Werksdaten aus Datenbank…</div>
 
 <header>
   <div><h1>🏭 Werksplan Hagener Feinstahl</h1>
-  <div class="sub">Anlagen- & TGA-Verwaltung · Standort Herdecker Str. 4-10, Hagen · <b>PROTOTYP</b> (Grundriss EG, Klotz 09/2025)</div></div>
+  <div class="sub">Anlagen- & TGA-Verwaltung · Standort Herdecker Str. 4-10, Hagen · Live-Daten (Supabase)</div></div>
   <div class="legend" id="legend"></div>
 </header>
 
 <div class="toolbar">
   <button id="backbtn" onclick="zoomOut()">↩ Zurück zur Übersicht</button>
   <button id="layerBtn" onclick="toggleLayerPanel()">🗂 Layer</button>
+  <button id="loginBtn" onclick="loginAction()">🔒 Anmelden</button>
   <input id="search" placeholder="🔍 Anlage suchen…">
   <span id="halleinfo"></span>
   <span id="count"></span>
@@ -90,172 +100,188 @@
   <div class="hallelayer" id="hallen"></div>
   <div id="zones"></div>
 </div></div>
-
-<div id="layers">
-  <div class="lh">🗂 Layer <span style="font-size:11px;color:#6b7690;font-weight:400">an/aus</span></div>
-  <div id="layerbody"></div>
-</div>
+<div id="layers"><div class="lh">🗂 Layer <span style="font-size:11px;color:#6b7690;font-weight:400">an/aus</span></div>
+  <div id="layerbody"></div></div>
 </div>
 
-<div class="foot">Prototyp — 13 Hallen/Bereiche (aus Architektenplan, mit NGF) + 16 von ~96 Anlagen. Klick auf eine Halle zoomt hinein. Dokumentenlinks → SharePoint BWGGL/Archiv (NAS). Stammdaten/Prüftermine sind Beispielwerte.</div>
+<div class="foot" id="foot">Live-Daten aus Supabase · Lesen offen, Bearbeiten nach Anmeldung · Intranet (VPN + IP-Whitelist).</div>
 
 <div id="panel">
   <button class="close" onclick="closePanel()">×</button>
-  <div class="ph"><div class="cat" id="p-cat"></div><h2 id="p-title"></h2>
-    <span class="status" id="p-status"></span></div>
-  <div class="body">
-    <div class="row"><span class="k">Typ</span><span class="v" id="p-typ"></span></div>
-    <div class="row"><span class="k">Halle</span><span class="v" id="p-halle"></span></div>
-    <div class="row"><span class="k">Letzte Prüfung / Aktion</span><span class="v" id="p-pruef"></span></div>
-    <div class="row"><span class="k">Dokumente</span><span class="v" id="p-docs"></span></div>
-    <div class="info" id="p-info"></div>
-    <a class="btn" id="p-link" target="_blank">📁 Dokumente in SharePoint öffnen</a>
-  </div>
+  <div class="ph"><div class="cat" id="p-cat"></div><h2 id="p-title"></h2><span class="status" id="p-status"></span></div>
+  <div class="body" id="p-body"></div>
 </div>
 
+<div id="loginBox"><div class="card">
+  <h3>🔒 Anmelden (Bearbeiten)</h3>
+  <input id="li-email" type="email" placeholder="E-Mail" autocomplete="username">
+  <input id="li-pw" type="password" placeholder="Passwort" autocomplete="current-password">
+  <div class="err" id="li-err"></div>
+  <button class="btn" onclick="doLogin()">Anmelden</button>
+  <button class="btn" style="background:#243450;margin-top:8px" onclick="document.getElementById('loginBox').classList.remove('show')">Abbrechen</button>
+</div></div>
+
 <script>
-const ZONES=[{"id": "ofen4", "label": "Ofen 4", "cat": "ofen", "halle": "h2", "x": 22, "y": 19, "w": 3.5, "h": 30, "folder": "Ofen 4", "typ": "Glühofen", "status": "ok", "pruefung": "Temperaturprofil 03/2026", "docs": 5, "info": "Glühgeschwindigkeiten dokumentiert. Reparaturhistorie vorhanden."}, {"id": "ofen5", "label": "Ofen 5", "cat": "ofen", "halle": "h2", "x": 25.5, "y": 19, "w": 3.5, "h": 30, "folder": "Ofen 5", "typ": "Glühofen", "status": "ok", "pruefung": "Neuisolierung dok.", "docs": 4, "info": "Projekt Reinigungsanlage + Neuisolierung. Lasermessung vorhanden."}, {"id": "ofen7", "label": "Ofen 7", "cat": "ofen", "halle": "h3", "x": 40, "y": 29, "w": 4, "h": 22, "folder": "Ofen 7", "typ": "Glühofen", "status": "faellig", "pruefung": "CE-Bericht FEHLT (ARSI-Q)", "docs": 2, "info": "Wickelwerk + Durchlaufreinigung. ⚠️ CE-Konformitätsbericht fehlt (siehe Mail-Recherche 2022)."}, {"id": "ofen81", "label": "Ofen 8-1", "cat": "ofen", "halle": "h41", "x": 47.5, "y": 40, "w": 4, "h": 42, "folder": "Ofen 8-1", "typ": "Glühofen (CRA)", "status": "ok", "pruefung": "HGH-Instandsetzung", "docs": 1, "info": "11 Unterthemen: Andrückrolle, Ziehkasten, Reinigungsanlage-Umbau u.a."}, {"id": "ofen82", "label": "Ofen 8-2", "cat": "ofen", "halle": "h41", "x": 51, "y": 40, "w": 4, "h": 42, "folder": "Ofen 8-2", "typ": "Glühofen (CRA)", "status": "ok", "pruefung": "Zumbach Lasermessung", "docs": 3, "info": "Projekt CRA-Ofen, Heizspiralen, Wickelwerk."}, {"id": "ofen11", "label": "Ofen 11", "cat": "ofen", "halle": "h6", "x": 57, "y": 54, "w": 4, "h": 26, "folder": "Ofen 11", "typ": "Glühofen", "status": "ok", "pruefung": "—", "docs": 1, "info": "Beschichtung, Kühlstrecke, Layout dokumentiert."}, {"id": "z1k", "label": "1K", "cat": "zug", "halle": "h1", "x": 15, "y": 25, "w": 3, "h": 8, "folder": "1K", "typ": "Ziehmaschine", "status": "faellig", "pruefung": "Getriebeschaden 01/2024", "docs": 3, "info": "Ablaufhaspel, Anspitzmaschine, Ziehkasten Doppelblock. Prüfung DPG."}, {"id": "z2k", "label": "2K", "cat": "zug", "halle": "h1", "x": 17.5, "y": 25, "w": 3, "h": 8, "folder": "2K", "typ": "Ziehmaschine", "status": "ok", "pruefung": "—", "docs": 1, "info": "Andrückrolle, Umlenkrolle, Ziehsteinadapter, SPS-Software."}, {"id": "z3s", "label": "3 S-Zug", "cat": "zug", "halle": "h1", "x": 19.5, "y": 25, "w": 3, "h": 8, "folder": "3 S-Zug", "typ": "Ziehmaschine", "status": "ok", "pruefung": "—", "docs": 2, "info": "Hängewickler, Ziehblöcke, Ziehsteinhalter."}, {"id": "z14s", "label": "14 S-Zug (Koch)", "cat": "zug", "halle": "h2", "x": 28.5, "y": 26, "w": 4, "h": 18, "folder": "14 S-Zug Koch", "typ": "Ziehmaschine", "status": "ok", "pruefung": "—", "docs": 6, "info": "Projekt 14S-Zug, Umbau Ziehsteinkühlung, Stromversorgung."}, {"id": "feinzug", "label": "Feinzug (Bereich)", "cat": "feinzug", "halle": "h5", "x": 44, "y": 13, "w": 18, "h": 27, "folder": "Feinzug", "typ": "Feinzug-Anlagen", "status": "ok", "pruefung": "—", "docs": 6, "info": "~25 Unterordner: Positionen 4/19, 4/21, 6/21, 1/20 u.v.m. + Ziehmaschinen Kom7324/7726."}, {"id": "kompressoren", "label": "Kompressoren", "cat": "tga", "halle": "h9", "x": 89, "y": 79, "w": 5, "h": 8, "folder": "Druckluftkompressoren", "typ": "Druckluft (TGA)", "status": "ok", "pruefung": "Wartung MDT lfd.", "docs": 12, "info": "2× ASK 34 + SK 25 SFC + Drukosep 10. Serviceberichte vorhanden."}, {"id": "kuehlwasser", "label": "Kühlwasserversorgung", "cat": "tga", "halle": "h9", "x": 85, "y": 79, "w": 4, "h": 8, "folder": "Kühlwassersystem H. 5-8", "typ": "Kühlwasser (TGA)", "status": "faellig", "pruefung": "Hygiene n. sichergestellt ⚠️", "docs": 15, "info": "Plattenwärmetauscher, Pumpen, Ultraschallmessungen. Legionellen-Thema (Wagurit)."}, {"id": "umspulerei", "label": "Umspulerei", "cat": "prod", "halle": "h6", "x": 80, "y": 78, "w": 5, "h": 8, "folder": "", "typ": "Produktion", "status": "ok", "pruefung": "—", "docs": 0, "info": "Umspuler-Bereich."}, {"id": "trockenkammer", "label": "Trockenkammer I", "cat": "prod", "halle": "verw", "x": 14.5, "y": 9, "w": 5, "h": 9, "folder": "", "typ": "Produktion", "status": "ok", "pruefung": "—", "docs": 0, "info": "Trockenkammer."}, {"id": "gashahn", "label": "Gas-Haupthahn", "cat": "tga", "halle": "h3", "x": 30, "y": 13, "w": 3.5, "h": 6, "folder": "Linde Gasanlage", "typ": "Gas (TGA)", "status": "ok", "pruefung": "Dichtheitsprüfung dok.", "docs": 8, "info": "Linde Gasanlage: 960641_LIN, 960836_GH2, SDB, Dichtheitsprüfung Rohrleitung."}], HALLEN=[{"id": "h1", "label": "Halle 1", "x": 11.3, "w": 9.7, "ngf": "730,88 m²", "nutzung": "Ziehmaschinen 1K/2K/3S/4S/6S"}, {"id": "h2", "label": "Halle 2", "x": 21.0, "w": 8.3, "ngf": "735,37 m²", "nutzung": "14S Koch, Ofen 4/5"}, {"id": "h3", "label": "Halle 3", "x": 29.3, "w": 7.3, "ngf": "839,21 m²", "nutzung": "Ofen 7, Ofen 10-x"}, {"id": "h41", "label": "Halle 4.1", "x": 36.6, "w": 8.1, "ngf": "1.004,59 m²", "nutzung": "Ofen 8-1 / 8-2"}, {"id": "h5", "label": "Halle 5", "x": 44.7, "w": 8.5, "ngf": "1.509,76 m²", "nutzung": "Ofen 8-3"}, {"id": "h6", "label": "Halle 6", "x": 53.2, "w": 8.5, "ngf": "1.507,88 m²", "nutzung": "Ofen 11, Umspulerei"}, {"id": "h7", "label": "Halle 7", "x": 61.7, "w": 8.5, "ngf": "1.511,33 m²", "nutzung": "Ofen 8-x"}, {"id": "h8", "label": "Halle 8", "x": 70.2, "w": 8.8, "ngf": "1.461,34 m²", "nutzung": "Ofen 8-4"}, {"id": "h9", "label": "Halle 9", "x": 79.0, "w": 9.0, "ngf": "1.479,49 m²", "nutzung": "Kompressoren, Kühlwasser (TGA)"}, {"id": "h42", "label": "Halle 4.2", "x": 36, "w": 9, "y": 66, "h": 22, "ngf": "376,91 m²", "nutzung": "unterer Produktionsbereich (1K neu, 6S)"}, {"id": "verw", "label": "Verwaltung", "x": 2, "w": 9, "y": 24, "h": 26, "ngf": "~350 m²", "nutzung": "Büros, Anmeldung, Serverraum, Ziehstein-Poliererei"}, {"id": "sozial", "label": "Sozialtrakt", "x": 5, "w": 12, "y": 70, "h": 22, "ngf": "~150 m²", "nutzung": "Umkleiden, Duschen, WC"}, {"id": "durchf", "label": "Durchfahrt", "x": 63, "w": 27, "y": 85, "h": 13, "ngf": "903,17 m²", "nutzung": "Zufahrt / Logistik"}], CATS={"ofen": {"name": "Glühöfen", "color": "#e85d3d"}, "zug": {"name": "Ziehmaschinen", "color": "#3d7de8"}, "feinzug": {"name": "Feinzug", "color": "#8b5cf6"}, "tga": {"name": "TGA / Medien", "color": "#14b8a6"}, "prod": {"name": "Sonstige Prod.", "color": "#64748b"}}, STATUS={"ok": {"label": "OK", "color": "#22c55e"}, "faellig": {"label": "Prüfung/Aktion", "color": "#f59e0b"}, "offen": {"label": "Offen", "color": "#ef4444"}};
-const SP="https://hafesta.sharepoint.com/sites/BWGGL/Freigegebene%20Dokumente/Maschinen%20und%20Anlagen/Archiv%20(NAS)/Maschinen%20und%20Anlagen";
-const HY=14, HH=52;
-let search="", currentHalle=null;
-const hMap={}; HALLEN.forEach(h=>hMap[h.id]=h);
+const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co", SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vcnRpbGJtbHdveGpldmh3cGltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMTU5NDYsImV4cCI6MjA5OTY5MTk0Nn0.5Uz1yQ9RsvJDJffa70foa-zyKDd3gWfaZmvulCxMppc";
+const sb = supabase.createClient(SB_URL, SB_ANON);
+let HALLEN=[], CATS={}, ZONES=[], hMap={};
+let search="", currentHalle=null, session=null;
+const layerOn={hallen:true};
 
-// --- Layer-State: jeder Layer unabhängig an/aus (mehrere gleichzeitig) ---
-// Layer 'hallen' + je Kategorie ein Layer. Start: alles an.
-const layerOn = { hallen:true };
-for(const k in CATS) layerOn[k]=true;
-
-// Anzahl Anlagen je Kategorie (für Badges)
-const catCount={}; for(const k in CATS) catCount[k]=0;
-ZONES.forEach(z=>catCount[z.cat]++);
-
-// Legende (Status)
-const leg=document.getElementById('legend');
-for(const k in STATUS){
-  leg.innerHTML+=`<span><i class="dot" style="background:${STATUS[k].color};border-radius:50%"></i>${STATUS[k].label}</span>`;
+async function loadData(){
+  const [h,k,a] = await Promise.all([
+    sb.from('hallen').select('*').order('sort'),
+    sb.from('kategorien').select('*'),
+    sb.from('anlagen').select('*')
+  ]);
+  if(h.error||k.error||a.error){ document.getElementById('loader').textContent='❌ Fehler beim Laden: '+(h.error||k.error||a.error).message; return false; }
+  HALLEN=h.data; ZONES=a.data.map(z=>({...z, cat:z.kategorie_id, halle:z.halle_id, label:z.name, x:z.pos_x,y:z.pos_y,w:z.pos_w,h:z.pos_h, folder:z.sharepoint_ordner}));
+  CATS={}; k.data.forEach(c=>CATS[c.id]={name:c.name,color:c.farbe});
+  for(const c in CATS) layerOn[c]=true;
+  hMap={}; HALLEN.forEach(x=>hMap[x.id]={...x, ngf:(x.ngf_m2?x.ngf_m2.toLocaleString('de-DE')+' m²':'—'), x:x.pos_x,y:x.pos_y,w:x.pos_w,h:x.pos_h});
+  HALLEN=HALLEN.map(x=>hMap[x.id]);
+  return true;
 }
 
-// --- Layer-Panel aufbauen ---
+function buildLegend(){
+  const leg=document.getElementById('legend'); leg.innerHTML='';
+  const ST={ok:['OK','#22c55e'],faellig:['Prüfung/Aktion','#f59e0b'],offen:['Offen','#ef4444']};
+  for(const s in ST) leg.innerHTML+=`<span><i class="dot" style="background:${ST[s][1]};border-radius:50%"></i>${ST[s][0]}</span>`;
+}
+const STCOL={ok:'#22c55e',faellig:'#f59e0b',offen:'#ef4444'};
+const STLBL={ok:'OK',faellig:'Prüfung/Aktion',offen:'Offen'};
+
 function buildLayerPanel(){
   const lb=document.getElementById('layerbody');
-  let html='';
-  // Gruppe Räumlich
-  html+='<div class="lgroup"><div class="grouphead">🏛 Räumlich</div>';
-  html+=layerRow('hallen','Hallen & Bereiche','#7fb0ff',HALLEN.length,true);
-  html+='</div>';
-  // Gruppe Anlagen
-  html+='<div class="lgroup"><div class="grouphead">⚙️ Anlagen & TGA</div>';
-  html+=`<div class="lrow master${allAnlagenOn()?' on':''}" data-master="1"><div class="sw"></div><span>Alle Anlagen</span><span class="cnt">${ZONES.length}</span></div>`;
-  for(const k in CATS){
-    html+=layerRow(k, CATS[k].name, CATS[k].color, catCount[k], false);
-  }
-  html+='</div>';
-  lb.innerHTML=html;
-  // Events
-  lb.querySelectorAll('.lrow').forEach(row=>{
-    row.onclick=()=>{
-      if(row.dataset.master){ toggleAllAnlagen(); }
-      else { const key=row.dataset.layer; layerOn[key]=!layerOn[key]; }
-      refreshLayerUI(); applyLayers();
-    };
+  const catCount={}; for(const k in CATS) catCount[k]=0; ZONES.forEach(z=>catCount[z.cat]++);
+  let html='<div class="lgroup"><div class="grouphead">🏛 Räumlich</div>';
+  html+=lrow('hallen','Hallen & Bereiche','#7fb0ff',HALLEN.length);
+  html+='</div><div class="lgroup"><div class="grouphead">⚙️ Anlagen & TGA</div>';
+  html+=`<div class="lrow master${allOn()?' on':''}" data-master="1"><div class="sw"></div><span>Alle Anlagen</span><span class="cnt">${ZONES.length}</span></div>`;
+  for(const k in CATS) html+=lrow(k,CATS[k].name,CATS[k].color,catCount[k]);
+  html+='</div>'; lb.innerHTML=html;
+  lb.querySelectorAll('.lrow').forEach(r=>r.onclick=()=>{
+    if(r.dataset.master){ const t=!allOn(); for(const k in CATS) layerOn[k]=t; }
+    else layerOn[r.dataset.layer]=!layerOn[r.dataset.layer];
+    refreshLayers(); applyLayers();
   });
 }
-function layerRow(key,label,color,count,spatial){
-  const on=layerOn[key];
-  const clr=`<span class="clr" style="background:${color}"></span>`;
-  return `<div class="lrow${on?' on':''}" data-layer="${key}">${clr}<div class="sw"></div><span>${label}</span><span class="cnt">${count}</span></div>`;
-}
-function allAnlagenOn(){ return Object.keys(CATS).every(k=>layerOn[k]); }
-function toggleAllAnlagen(){ const target=!allAnlagenOn(); for(const k in CATS) layerOn[k]=target; }
-function refreshLayerUI(){
-  document.querySelectorAll('#layerbody .lrow').forEach(row=>{
-    if(row.dataset.master) row.classList.toggle('on',allAnlagenOn());
-    else row.classList.toggle('on',layerOn[row.dataset.layer]);
-  });
-}
+function lrow(key,label,color,count){ return `<div class="lrow${layerOn[key]?' on':''}" data-layer="${key}"><span class="clr" style="background:${color}"></span><div class="sw"></div><span>${label}</span><span class="cnt">${count}</span></div>`; }
+function allOn(){ return Object.keys(CATS).every(k=>layerOn[k]); }
+function refreshLayers(){ document.querySelectorAll('#layerbody .lrow').forEach(r=>{ if(r.dataset.master) r.classList.toggle('on',allOn()); else r.classList.toggle('on',layerOn[r.dataset.layer]); }); }
 function toggleLayerPanel(){ document.getElementById('layers').classList.toggle('collapsed'); }
 
 function renderHallen(){
   const hc=document.getElementById('hallen'); hc.innerHTML='';
   HALLEN.forEach(h=>{
-    const y=h.y!==undefined?h.y:HY, ht=h.h!==undefined?h.h:HH;
     const d=document.createElement('div'); d.className='halle';
-    d.style.cssText=`left:${h.x}%;top:${y}%;width:${h.w}%;height:${ht}%;`;
+    d.style.cssText=`left:${h.x}%;top:${h.y}%;width:${h.w}%;height:${h.h}%;`;
     d.innerHTML=`<span class="hl">${h.label}</span><span class="hngf">${h.ngf}</span>`;
-    d.onclick=(e)=>{ e.stopPropagation(); zoomToHalle(h); };
-    hc.appendChild(d);
+    d.onclick=(e)=>{e.stopPropagation();zoomToHalle(h);}; hc.appendChild(d);
   });
 }
-
 function renderZones(){
-  const zc=document.getElementById('zones'); zc.innerHTML='';
-  let n=0;
+  const zc=document.getElementById('zones'); zc.innerHTML=''; let n=0;
   ZONES.forEach(z=>{
-    const cat=CATS[z.cat], st=STATUS[z.status];
-    let match = layerOn[z.cat] &&
-                (!search||z.label.toLowerCase().includes(search)||z.typ.toLowerCase().includes(search));
-    if(currentHalle && z.halle!==currentHalle) match=false;  // beim Zoom nur Halle-Anlagen
-    const d=document.createElement('div');
-    d.className='zone'+(match?'':' dim');
+    const cat=CATS[z.cat]||{color:'#888'};
+    let match=layerOn[z.cat] && (!search||z.label.toLowerCase().includes(search)||(z.typ||'').toLowerCase().includes(search));
+    if(currentHalle && z.halle!==currentHalle) match=false;
+    const d=document.createElement('div'); d.className='zone'+(match?'':' dim');
     d.style.cssText+=`left:${z.x}%;top:${z.y}%;width:${z.w}%;height:${z.h}%;border-color:${cat.color};`;
-    d.innerHTML=`<span class="tag" style="background:${cat.color}">${z.label}</span>`+
-                `<span class="sdot" style="background:${st.color}"></span>`;
+    d.innerHTML=`<span class="tag" style="background:${cat.color}">${z.label}</span><span class="sdot" style="background:${STCOL[z.status]||'#888'}"></span>`;
     if(match){ d.onclick=(e)=>{e.stopPropagation();openPanel(z);}; n++; }
     zc.appendChild(d);
   });
   document.getElementById('count').textContent=n+' Anlagen sichtbar';
 }
-
-// Layer anwenden: Hallen-Sichtbarkeit + Anlagen neu rendern
-function applyLayers(){
-  const showHallen = layerOn.hallen && !currentHalle;
-  document.getElementById('hallen').classList.toggle('hidden', !showHallen);
-  renderZones();
-}
+function applyLayers(){ document.getElementById('hallen').classList.toggle('hidden', !(layerOn.hallen&&!currentHalle)); renderZones(); }
 
 function zoomToHalle(h){
-  currentHalle=h.id;
-  const y=h.y!==undefined?h.y:HY, ht=h.h!==undefined?h.h:HH;
-  const pad=4;
-  const scale=Math.min(100/(h.w+pad*2), 100/(ht+pad*2), 4.5);
-  const midX=h.x+h.w/2, midY=y+ht/2;
-  const tx=(50/scale)-midX, ty=(50/scale)-midY;
-  document.getElementById('planbox').style.transform=`scale(${scale}) translate(${tx}%, ${ty}%)`;
+  currentHalle=h.id; const pad=4;
+  const scale=Math.min(100/(h.w+pad*2),100/(h.h+pad*2),4.5);
+  const tx=(50/scale)-(h.x+h.w/2), ty=(50/scale)-(h.y+h.h/2);
+  document.getElementById('planbox').style.transform=`scale(${scale}) translate(${tx}%,${ty}%)`;
   document.getElementById('hallen').classList.add('hidden');
   document.getElementById('backbtn').style.display='inline-block';
-  const hi=document.getElementById('halleinfo');
-  hi.style.display='inline'; hi.textContent=`📍 ${h.label} · ${h.ngf} · ${h.nutzung}`;
+  const hi=document.getElementById('halleinfo'); hi.style.display='inline'; hi.textContent=`📍 ${h.label} · ${h.ngf} · ${h.nutzung||''}`;
   renderZones();
 }
-function zoomOut(){
-  currentHalle=null;
-  document.getElementById('planbox').style.transform='';
-  document.getElementById('backbtn').style.display='none';
-  document.getElementById('halleinfo').style.display='none';
-  applyLayers();
-}
+function zoomOut(){ currentHalle=null; document.getElementById('planbox').style.transform=''; document.getElementById('backbtn').style.display='none'; document.getElementById('halleinfo').style.display='none'; applyLayers(); }
 
-function openPanel(z){
-  const cat=CATS[z.cat], st=STATUS[z.status], h=hMap[z.halle];
-  document.getElementById('p-cat').textContent=cat.name;
-  document.getElementById('p-cat').style.color=cat.color;
+async function openPanel(z){
+  const cat=CATS[z.cat]||{name:'?',color:'#888'}, h=hMap[z.halle];
+  document.getElementById('p-cat').textContent=cat.name; document.getElementById('p-cat').style.color=cat.color;
   document.getElementById('p-title').textContent=z.label;
-  document.getElementById('p-status').innerHTML=`<i class="dot" style="background:${st.color};border-radius:50%"></i>${st.label}`;
-  document.getElementById('p-typ').textContent=z.typ;
-  document.getElementById('p-halle').textContent=h?`${h.label} (${h.ngf})`:'—';
-  document.getElementById('p-pruef').textContent=z.pruefung;
-  document.getElementById('p-docs').textContent=z.docs+' Datei(en)';
-  document.getElementById('p-info').textContent=z.info;
-  const link=document.getElementById('p-link');
-  if(z.folder){ link.href=SP+'/'+encodeURIComponent(z.folder); link.style.display='block'; }
-  else link.style.display='none';
+  document.getElementById('p-status').innerHTML=`<i class="dot" style="background:${STCOL[z.status]};border-radius:50%"></i>${STLBL[z.status]||z.status}`;
+  const sp = z.folder ? `<a class="btn" target="_blank" href="https://hafesta.sharepoint.com/sites/BWGGL/Freigegebene%20Dokumente/Maschinen%20und%20Anlagen/Archiv%20(NAS)/Maschinen%20und%20Anlagen/${encodeURIComponent(z.folder)}">📁 SharePoint-Ordner</a>` : '';
+  let body=`<div class="row"><span class="k">Typ</span><span class="v">${z.typ||'—'}</span></div>
+    <div class="row"><span class="k">Halle</span><span class="v">${h?h.label+' ('+h.ngf+')':'—'}</span></div>
+    <div class="info">${z.info||''}</div>`;
+  // Prüfungen + Wartung live nachladen
+  const [pr,wa,dk] = await Promise.all([
+    sb.from('pruefungen').select('*').eq('anlage_id',z.id).order('faellig_am'),
+    sb.from('wartung').select('*').eq('anlage_id',z.id).order('datum',{ascending:false}),
+    sb.from('dokumente').select('*').eq('anlage_id',z.id)
+  ]);
+  body+=`<h3>🔍 Prüfungen</h3>`;
+  body+=(pr.data&&pr.data.length)?pr.data.map(p=>`<div class="item"><span class="t">${p.art}</span> — fällig ${p.faellig_am||'?'} ${p.ergebnis?'· '+p.ergebnis:''}</div>`).join(''):'<div class="item">keine erfasst</div>';
+  body+=`<h3>🔧 Wartung</h3>`;
+  body+=(wa.data&&wa.data.length)?wa.data.map(w=>`<div class="item"><span class="t">${w.datum||''}</span> ${w.beschreibung||''}</div>`).join(''):'<div class="item">keine erfasst</div>';
+  body+=sp;
+  if(session){
+    body+=`<h3>✏️ Bearbeiten</h3>
+    <label style="font-size:12px;color:#8b96ad">Status</label>
+    <select id="ed-status">
+      <option value="ok"${z.status==='ok'?' selected':''}>OK</option>
+      <option value="faellig"${z.status==='faellig'?' selected':''}>Prüfung/Aktion fällig</option>
+      <option value="offen"${z.status==='offen'?' selected':''}>Offen</option>
+    </select>
+    <button class="btn edit" onclick="saveStatus('${z.id}')">Status speichern</button>
+    <label style="font-size:12px;color:#8b96ad;margin-top:10px;display:block">Neue Prüfung</label>
+    <input id="ed-pruef-art" placeholder="Art (UVV/TÜV/CE…)">
+    <input id="ed-pruef-faellig" type="date">
+    <button class="btn edit" onclick="addPruef('${z.id}')">Prüfung hinzufügen</button>`;
+  }
+  document.getElementById('p-body').innerHTML=body;
   document.getElementById('panel').classList.add('open');
 }
 function closePanel(){ document.getElementById('panel').classList.remove('open'); }
 
-document.getElementById('search').oninput=e=>{ search=e.target.value.toLowerCase(); renderZones(); };
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closePanel(); if(currentHalle) zoomOut(); } });
+async function saveStatus(id){
+  const v=document.getElementById('ed-status').value;
+  const {error}=await sb.from('anlagen').update({status:v,updated_at:new Date().toISOString()}).eq('id',id);
+  if(error){ alert('Fehler: '+error.message); return; }
+  const z=ZONES.find(x=>x.id===id); z.status=v; renderZones();
+  const zc=ZONES.find(x=>x.id===id); openPanel(zc);
+}
+async function addPruef(id){
+  const art=document.getElementById('ed-pruef-art').value.trim();
+  const faellig=document.getElementById('ed-pruef-faellig').value||null;
+  if(!art){ alert('Art angeben'); return; }
+  const {error}=await sb.from('pruefungen').insert({anlage_id:id,art:art,faellig_am:faellig});
+  if(error){ alert('Fehler: '+error.message); return; }
+  openPanel(ZONES.find(x=>x.id===id));
+}
 
-buildLayerPanel(); renderHallen(); applyLayers();
+// --- Auth ---
+function loginAction(){ if(session){ sb.auth.signOut().then(()=>{session=null;updateLoginBtn();closePanel();}); } else { document.getElementById('loginBox').classList.add('show'); } }
+async function doLogin(){
+  const email=document.getElementById('li-email').value, pw=document.getElementById('li-pw').value;
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
+  if(error){ document.getElementById('li-err').textContent=error.message; return; }
+  session=data.session; document.getElementById('loginBox').classList.remove('show'); updateLoginBtn();
+}
+function updateLoginBtn(){ const b=document.getElementById('loginBtn'); if(session){ b.textContent='✓ Angemeldet (abmelden)'; b.classList.add('in'); } else { b.textContent='🔒 Anmelden'; b.classList.remove('in'); } }
+
+document.getElementById('search').oninput=e=>{ search=e.target.value.toLowerCase(); renderZones(); };
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closePanel(); document.getElementById('loginBox').classList.remove('show'); if(currentHalle) zoomOut(); } });
+
+(async ()=>{
+  const ok=await loadData();
+  if(!ok) return;
+  const {data}=await sb.auth.getSession(); session=data.session; updateLoginBtn();
+  buildLegend(); buildLayerPanel(); renderHallen(); applyLayers();
+  document.getElementById('loader').style.display='none';
+})();
 </script>
 </body></html>
