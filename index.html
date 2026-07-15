@@ -1,92 +1,135 @@
 <!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Werksplan Hagener Feinstahl — Anlagenverwaltung</title>
+<title>Werksplan Hagener Feinstahl</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
+  :root {
+    --legacy:#143439; --bright:#46B384; --graphite:#567E84;
+    --bg:#0e1a1c; --panel:#12262a; --panel2:#0f2023; --line:#1e3a3f;
+    --txt:#eaf2f0; --muted:#8fa9a8; --flow:linear-gradient(-56deg,#567E84 0%,#46B384 100%);
+    --ok:#46B384; --warn:#f5a623; --crit:#e0574a;
+  }
   * { box-sizing:border-box; margin:0; padding:0; }
-  body { font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:#0f1420; color:#e8edf5; }
-  header { padding:14px 22px; background:#161d2e; border-bottom:1px solid #2a3450; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
-  header h1 { font-size:18px; font-weight:650; }
-  header .sub { font-size:12px; color:#8b96ad; }
-  .legend { display:flex; gap:14px; flex-wrap:wrap; margin-left:auto; align-items:center; }
-  .legend span { font-size:12px; display:flex; align-items:center; gap:5px; }
-  .dot { width:11px; height:11px; border-radius:3px; display:inline-block; }
-  .toolbar { padding:8px 22px; background:#12182740; display:flex; gap:10px; align-items:center; flex-wrap:wrap; border-bottom:1px solid #232d45; }
-  .toolbar button { background:#1e2740; color:#cdd6e8; border:1px solid #34406090; padding:5px 12px; border-radius:6px; font-size:12px; cursor:pointer; }
-  .toolbar input { background:#1a2135; border:1px solid #34406090; color:#e8edf5; padding:5px 10px; border-radius:6px; font-size:12px; width:180px; }
-  #backbtn { display:none; background:#d8842d; border-color:#d8842d; color:#fff; font-weight:600; }
-  #loginBtn { background:#243450; border-color:#3a5480; }
-  #loginBtn.in { background:#22c55e; border-color:#22c55e; color:#08210f; font-weight:600; }
+  body { font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--txt); }
+  /* Header mit Bender-Flow-Akzent */
+  header { padding:0; background:var(--legacy); border-bottom:1px solid var(--line); }
+  .hbar { height:4px; background:var(--flow); }
+  .htop { padding:14px 24px; display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+  header h1 { font-size:19px; font-weight:700; letter-spacing:.2px; display:flex; align-items:center; gap:10px; }
+  header .logo { width:30px; height:30px; border-radius:7px; background:var(--flow); display:flex; align-items:center; justify-content:center; font-size:16px; }
+  header .sub { font-size:12px; color:#9fc4bd; margin-top:2px; }
+  .legend { display:flex; gap:16px; flex-wrap:wrap; margin-left:auto; align-items:center; }
+  .legend span { font-size:12px; display:flex; align-items:center; gap:6px; color:#cfe3df; }
+  .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+  /* KPI-Leiste */
+  .kpis { display:flex; gap:14px; padding:14px 24px; background:var(--panel2); border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .kpi { flex:1; min-width:150px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; position:relative; overflow:hidden; }
+  .kpi::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--bright); }
+  .kpi.warn::before { background:var(--warn); } .kpi.crit::before { background:var(--crit); }
+  .kpi .n { font-size:26px; font-weight:750; line-height:1; }
+  .kpi .l { font-size:11px; color:var(--muted); margin-top:6px; text-transform:uppercase; letter-spacing:.5px; }
+  /* Toolbar */
+  .toolbar { padding:10px 24px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; border-bottom:1px solid var(--line); background:var(--bg); }
+  .toolbar button { background:var(--panel); color:var(--txt); border:1px solid var(--line); padding:7px 14px; border-radius:8px; font-size:12px; cursor:pointer; transition:.15s; }
+  .toolbar button:hover { border-color:var(--bright); }
+  .toolbar input { background:var(--panel); border:1px solid var(--line); color:var(--txt); padding:7px 12px; border-radius:8px; font-size:12px; width:200px; }
+  .toolbar input:focus { outline:none; border-color:var(--bright); }
+  #backbtn { display:none; background:var(--graphite); border-color:var(--graphite); color:#fff; font-weight:600; }
+  #loginBtn.in { background:var(--bright); border-color:var(--bright); color:#08210f; font-weight:700; }
+  #count { font-size:12px; color:var(--muted); margin-left:auto; }
+  #halleinfo { font-size:13px; color:var(--bright); font-weight:600; display:none; }
+  /* Bearbeitungsmodus-Banner */
+  #editBanner { display:none; padding:7px 24px; background:linear-gradient(90deg,#1e4d3a,#143439); color:#8fe6bd; font-size:12px; font-weight:600; border-bottom:1px solid var(--bright); }
+  #editBanner.show { display:block; }
   .main { display:flex; align-items:flex-start; }
-  .wrap { position:relative; margin:16px 22px; overflow:hidden; border:1px solid #2a3450; border-radius:10px; flex:1; }
-  .planbox { position:relative; width:100%; background:#fff; transform-origin:0 0; transition:transform .5s cubic-bezier(.4,0,.2,1); }
+  .wrap { position:relative; margin:18px 24px; overflow:hidden; border:1px solid var(--line); border-radius:14px; flex:1; box-shadow:0 8px 30px rgba(0,0,0,.3); }
+  .planbox { position:relative; width:100%; background:#fff; transform-origin:0 0; transition:transform .55s cubic-bezier(.4,0,.2,1); }
   .planbox img { width:100%; display:block; }
-  #layers { width:262px; flex-shrink:0; margin:16px 22px 16px 0; background:#141b2c; border:1px solid #2a3450; border-radius:10px; overflow:hidden; transition:width .2s,margin .2s,opacity .2s; }
+  #layers { width:266px; flex-shrink:0; margin:18px 24px 18px 0; background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; transition:.2s; box-shadow:0 8px 30px rgba(0,0,0,.3); }
   #layers.collapsed { width:0; margin-right:0; opacity:0; border:0; }
-  #layers .lh { padding:12px 16px; font-size:13px; font-weight:650; background:#1a2338; border-bottom:1px solid #2a3450; display:flex; justify-content:space-between; }
-  #layers .lgroup { padding:6px 0; border-bottom:1px solid #212a41; }
-  #layers .grouphead { padding:8px 16px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:#8b96ad; }
-  #layers .lrow { display:flex; align-items:center; gap:10px; padding:7px 16px 7px 30px; font-size:13px; cursor:pointer; user-select:none; }
-  #layers .lrow:hover { background:#1a2338; }
-  #layers .lrow .cnt { margin-left:auto; font-size:11px; color:#6b7690; background:#0f1420; padding:1px 7px; border-radius:10px; }
-  #layers .sw { position:relative; width:34px; height:18px; border-radius:20px; background:#33405c; flex-shrink:0; transition:background .15s; }
-  #layers .sw::after { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#8b96ad; transition:all .15s; }
-  #layers .on .sw { background:#2d68d8; }
+  #layers .lh { padding:14px 16px; font-size:13px; font-weight:700; background:var(--legacy); border-bottom:1px solid var(--line); display:flex; justify-content:space-between; }
+  #layers .lgroup { padding:6px 0; border-bottom:1px solid var(--line); }
+  #layers .grouphead { padding:9px 16px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); }
+  #layers .lrow { display:flex; align-items:center; gap:10px; padding:8px 16px 8px 30px; font-size:13px; cursor:pointer; user-select:none; transition:.12s; }
+  #layers .lrow:hover { background:var(--panel2); }
+  #layers .lrow .cnt { margin-left:auto; font-size:11px; color:var(--muted); background:var(--bg); padding:2px 8px; border-radius:10px; }
+  #layers .sw { position:relative; width:36px; height:20px; border-radius:20px; background:#2c4448; flex-shrink:0; transition:.15s; }
+  #layers .sw::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:var(--muted); transition:.15s; }
+  #layers .on .sw { background:var(--bright); }
   #layers .on .sw::after { left:18px; background:#fff; }
   #layers .lrow .clr { width:11px; height:11px; border-radius:3px; flex-shrink:0; }
-  #layers .master { padding-left:16px; font-weight:600; color:#e8edf5; }
-  #layers .master .sw { background:#2f6b4a; }
-  #layers .master.on .sw { background:#22c55e; }
-  .halle { position:absolute; border:1.5px dashed #b9c4dd88; border-radius:6px; background:rgba(90,120,180,.10); cursor:pointer; transition:all .15s; }
-  .halle:hover { background:rgba(90,150,220,.28); border-color:#7fb0ff; }
-  .halle .hl { position:absolute; top:4px; left:6px; font-size:11px; font-weight:700; color:#1a2a4a; background:#dbe6ff; padding:2px 7px; border-radius:4px; white-space:nowrap; }
-  .halle .hngf { position:absolute; top:22px; left:6px; font-size:9px; color:#33456a; background:#eef3ff; padding:1px 6px; border-radius:3px; }
+  #layers .master { padding-left:16px; font-weight:600; }
+  #layers .master.on .sw { background:var(--bright); }
+  .halle { position:absolute; border:1.5px dashed rgba(86,126,132,.7); border-radius:7px; background:rgba(86,126,132,.10); cursor:pointer; transition:.15s; }
+  .halle:hover { background:rgba(70,179,132,.20); border-color:var(--bright); }
+  .halle .hl { position:absolute; top:5px; left:6px; font-size:11px; font-weight:700; color:#fff; background:var(--legacy); padding:2px 8px; border-radius:5px; white-space:nowrap; }
+  .halle .hngf { position:absolute; top:24px; left:6px; font-size:9px; color:var(--legacy); background:rgba(255,255,255,.85); padding:1px 6px; border-radius:3px; font-weight:600; }
   .hallelayer.hidden .halle { display:none; }
-  .zone { position:absolute; border:2px solid; border-radius:5px; cursor:pointer; transition:all .12s; background:rgba(255,255,255,.02); }
-  .zone:hover { background:rgba(255,255,255,.18); box-shadow:0 0 0 3px rgba(255,255,255,.25); z-index:5; }
-  .zone .tag { position:absolute; top:-9px; left:-2px; font-size:9px; font-weight:600; padding:1px 5px; border-radius:4px; color:#fff; white-space:nowrap; }
-  .zone .sdot { position:absolute; top:2px; right:2px; width:9px; height:9px; border-radius:50%; border:1.5px solid #fff; }
-  .zone.dim { opacity:.12; pointer-events:none; }
-  #panel { position:fixed; top:0; right:-440px; width:420px; height:100%; background:#141b2c; border-left:1px solid #2a3450; box-shadow:-8px 0 30px rgba(0,0,0,.5); transition:right .22s; z-index:100; overflow-y:auto; }
+  .zone { position:absolute; border:2px solid; border-radius:6px; cursor:pointer; transition:.12s; background:rgba(255,255,255,.03); }
+  .zone:hover { background:rgba(70,179,132,.20); box-shadow:0 0 0 3px rgba(70,179,132,.35); z-index:5; }
+  .zone .tag { position:absolute; top:-9px; left:-2px; font-size:9px; font-weight:700; padding:1px 6px; border-radius:5px; color:#fff; white-space:nowrap; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  .zone .sdot { position:absolute; top:3px; right:3px; width:10px; height:10px; border-radius:50%; border:2px solid #fff; }
+  .zone.dim { opacity:.10; pointer-events:none; }
+  /* Tooltip */
+  #tip { position:fixed; z-index:150; background:var(--legacy); color:#fff; padding:7px 11px; border-radius:8px; font-size:12px; pointer-events:none; opacity:0; transition:opacity .12s; box-shadow:0 4px 16px rgba(0,0,0,.4); border:1px solid var(--bright); max-width:220px; }
+  #tip.show { opacity:1; }
+  #tip .tt { font-weight:700; } #tip .ts { font-size:11px; color:#bfe3d3; margin-top:2px; }
+  /* Panel */
+  #panel { position:fixed; top:0; right:-460px; width:440px; height:100%; background:var(--panel); border-left:1px solid var(--line); box-shadow:-12px 0 40px rgba(0,0,0,.55); transition:right .25s; z-index:100; overflow-y:auto; }
   #panel.open { right:0; }
-  #panel .ph { padding:20px; border-bottom:1px solid #2a3450; }
-  #panel .ph .cat { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
-  #panel .ph h2 { font-size:22px; margin:4px 0 8px; }
-  #panel .status { display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:3px 10px; border-radius:20px; background:#0f1420; }
-  #panel .body { padding:20px; }
-  #panel .row { display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid #212a41; font-size:13px; gap:12px; }
-  #panel .row .k { color:#8b96ad; flex-shrink:0; }
-  #panel .row .v { text-align:right; }
-  #panel .info { margin:14px 0; padding:12px; background:#0f1420; border-radius:8px; font-size:13px; line-height:1.5; color:#c4cde0; }
-  #panel h3 { font-size:13px; margin:18px 0 8px; color:#8b96ad; text-transform:uppercase; letter-spacing:.4px; }
-  #panel .item { background:#0f1420; border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:12px; }
+  #panel .ph { padding:22px; background:var(--legacy); border-bottom:1px solid var(--line); position:relative; }
+  #panel .ph::after { content:''; position:absolute; left:0; right:0; bottom:0; height:3px; background:var(--flow); }
+  #panel .cat { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; }
+  #panel h2 { font-size:23px; margin:5px 0 10px; }
+  #panel .status { display:inline-flex; align-items:center; gap:7px; font-size:12px; padding:4px 12px; border-radius:20px; font-weight:600; }
+  #panel .body { padding:22px; }
+  #panel .row { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line); font-size:13px; gap:12px; }
+  #panel .row .k { color:var(--muted); flex-shrink:0; }
+  #panel .row .v { text-align:right; font-weight:500; }
+  #panel .info { margin:16px 0; padding:13px; background:var(--panel2); border-radius:10px; font-size:13px; line-height:1.55; color:#cfe3df; border-left:3px solid var(--graphite); }
+  #panel h3 { font-size:12px; margin:20px 0 9px; color:var(--bright); text-transform:uppercase; letter-spacing:.5px; }
+  #panel .item { background:var(--panel2); border-radius:8px; padding:9px 11px; margin-bottom:6px; font-size:12px; display:flex; justify-content:space-between; gap:8px; }
   #panel .item .t { font-weight:600; }
-  #panel a.btn, #panel button.btn { display:block; width:100%; text-align:center; margin-top:10px; padding:11px; background:#2d68d8; color:#fff; text-decoration:none; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; }
-  #panel button.btn.edit { background:#243a2e; border:1px solid #2f6b4a; color:#8fe0b0; }
-  #panel .close { position:absolute; top:16px; right:16px; background:none; border:none; color:#8b96ad; font-size:24px; cursor:pointer; }
-  #panel select, #panel input, #panel textarea { width:100%; background:#0f1420; border:1px solid #34406090; color:#e8edf5; padding:8px; border-radius:6px; font-size:13px; margin-top:6px; }
-  .foot { padding:10px 22px 24px; font-size:11px; color:#5b6478; }
-  #count { font-size:12px; color:#8b96ad; margin-left:auto; }
-  #halleinfo { font-size:13px; color:#ffd9a8; font-weight:600; display:none; }
-  #loginBox { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:200; }
+  #panel .item .badge { font-size:10px; padding:1px 7px; border-radius:10px; font-weight:600; white-space:nowrap; }
+  #panel a.btn, #panel button.btn { display:block; width:100%; text-align:center; margin-top:11px; padding:12px; background:var(--bright); color:#08210f; text-decoration:none; border:none; border-radius:9px; font-size:13px; font-weight:700; cursor:pointer; transition:.15s; }
+  #panel a.btn:hover, #panel button.btn:hover { filter:brightness(1.08); }
+  #panel button.btn.sec { background:var(--panel2); color:var(--bright); border:1px solid var(--bright); }
+  #panel .close { position:absolute; top:18px; right:18px; background:rgba(255,255,255,.1); border:none; color:#fff; font-size:20px; width:32px; height:32px; border-radius:8px; cursor:pointer; }
+  #panel select, #panel input, #panel textarea { width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--txt); padding:9px; border-radius:8px; font-size:13px; margin-top:6px; }
+  #panel select:focus, #panel input:focus { outline:none; border-color:var(--bright); }
+  #panel .editbox { margin-top:14px; padding:14px; background:rgba(70,179,132,.07); border:1px solid rgba(70,179,132,.3); border-radius:10px; }
+  .foot { padding:12px 24px 28px; font-size:11px; color:#5c7975; }
+  /* Login-Modal */
+  #loginBox { position:fixed; inset:0; background:rgba(6,14,15,.75); display:none; align-items:center; justify-content:center; z-index:200; backdrop-filter:blur(3px); }
   #loginBox.show { display:flex; }
-  #loginBox .card { background:#141b2c; border:1px solid #2a3450; border-radius:12px; padding:24px; width:320px; }
-  #loginBox h3 { margin-bottom:14px; }
-  #loginBox input { width:100%; background:#0f1420; border:1px solid #34406090; color:#e8edf5; padding:9px; border-radius:6px; margin-bottom:10px; }
-  #loginBox .err { color:#ff6b6b; font-size:12px; min-height:16px; }
-  #loader { position:fixed; inset:0; background:#0f1420; display:flex; align-items:center; justify-content:center; color:#8b96ad; z-index:300; font-size:14px; }
+  #loginBox .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:28px; width:340px; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+  #loginBox .card::before { content:''; display:block; height:4px; background:var(--flow); border-radius:4px; margin:-28px -28px 20px; }
+  #loginBox h3 { margin-bottom:16px; font-size:17px; }
+  #loginBox input { width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--txt); padding:11px; border-radius:9px; margin-bottom:11px; }
+  #loginBox input:focus { outline:none; border-color:var(--bright); }
+  #loginBox .err { color:var(--crit); font-size:12px; min-height:16px; }
+  #loader { position:fixed; inset:0; background:var(--bg); display:flex; flex-direction:column; gap:14px; align-items:center; justify-content:center; color:var(--muted); z-index:300; font-size:14px; }
+  .spin { width:38px; height:38px; border:3px solid var(--line); border-top-color:var(--bright); border-radius:50%; animation:sp 1s linear infinite; }
+  @keyframes sp { to { transform:rotate(360deg); } }
 </style></head><body>
-<div id="loader">⏳ Lade Werksdaten aus Datenbank…</div>
+<div id="loader"><div class="spin"></div>Lade Werksdaten…</div>
 
 <header>
-  <div><h1>🏭 Werksplan Hagener Feinstahl</h1>
-  <div class="sub">Anlagen- & TGA-Verwaltung · Standort Herdecker Str. 4-10, Hagen · Live-Daten (Supabase)</div></div>
-  <div class="legend" id="legend"></div>
+  <div class="hbar"></div>
+  <div class="htop">
+    <div><h1><span class="logo">🏭</span> Werksplan Hagener Feinstahl</h1>
+    <div class="sub">Anlagen- & TGA-Verwaltung · Herdecker Str. 4-10, Hagen</div></div>
+    <div class="legend" id="legend"></div>
+  </div>
 </header>
 
+<div class="kpis" id="kpis"></div>
+
+<div id="editBanner">✏️ Bearbeitungsmodus aktiv — Änderungen werden direkt gespeichert.</div>
+
 <div class="toolbar">
-  <button id="backbtn" onclick="zoomOut()">↩ Zurück zur Übersicht</button>
+  <button id="backbtn" onclick="zoomOut()">↩ Übersicht</button>
   <button id="layerBtn" onclick="toggleLayerPanel()">🗂 Layer</button>
   <button id="loginBtn" onclick="loginAction()">🔒 Anmelden</button>
   <input id="search" placeholder="🔍 Anlage suchen…">
@@ -100,11 +143,13 @@
   <div class="hallelayer" id="hallen"></div>
   <div id="zones"></div>
 </div></div>
-<div id="layers"><div class="lh">🗂 Layer <span style="font-size:11px;color:#6b7690;font-weight:400">an/aus</span></div>
+<div id="layers"><div class="lh">🗂 Layer <span style="font-size:11px;color:var(--muted);font-weight:400">an/aus</span></div>
   <div id="layerbody"></div></div>
 </div>
 
-<div class="foot" id="foot">Live-Daten aus Supabase · Lesen offen, Bearbeiten nach Anmeldung · Intranet (VPN + IP-Whitelist).</div>
+<div class="foot" id="foot">Live-Daten (Supabase) · Lesen offen, Bearbeiten nach Anmeldung · Intranet (VPN + IP-Whitelist) · Bender Group CI</div>
+
+<div id="tip"></div>
 
 <div id="panel">
   <button class="close" onclick="closePanel()">×</button>
@@ -113,52 +158,74 @@
 </div>
 
 <div id="loginBox"><div class="card">
-  <h3>🔒 Anmelden (Bearbeiten)</h3>
+  <h3>🔒 Anmelden</h3>
   <input id="li-email" type="email" placeholder="E-Mail" autocomplete="username">
   <input id="li-pw" type="password" placeholder="Passwort" autocomplete="current-password">
   <div class="err" id="li-err"></div>
   <button class="btn" onclick="doLogin()">Anmelden</button>
-  <button class="btn" style="background:#243450;margin-top:8px" onclick="document.getElementById('loginBox').classList.remove('show')">Abbrechen</button>
+  <button class="btn sec" style="margin-top:9px" onclick="document.getElementById('loginBox').classList.remove('show')">Abbrechen</button>
 </div></div>
 
 <script>
 const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co", SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vcnRpbGJtbHdveGpldmh3cGltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMTU5NDYsImV4cCI6MjA5OTY5MTk0Nn0.5Uz1yQ9RsvJDJffa70foa-zyKDd3gWfaZmvulCxMppc";
 const sb = supabase.createClient(SB_URL, SB_ANON);
-let HALLEN=[], CATS={}, ZONES=[], hMap={};
+let HALLEN=[], CATS={}, ZONES=[], hMap={}, PRUEF=[];
 let search="", currentHalle=null, session=null;
 const layerOn={hallen:true};
+const STCOL={ok:'#46B384',faellig:'#f5a623',offen:'#e0574a'};
+const STLBL={ok:'OK',faellig:'Prüfung/Aktion',offen:'Offen'};
 
 async function loadData(){
-  const [h,k,a] = await Promise.all([
+  const [h,k,a,p] = await Promise.all([
     sb.from('hallen').select('*').order('sort'),
     sb.from('kategorien').select('*'),
-    sb.from('anlagen').select('*')
+    sb.from('anlagen').select('*'),
+    sb.from('pruefungen').select('*')
   ]);
-  if(h.error||k.error||a.error){ document.getElementById('loader').textContent='❌ Fehler beim Laden: '+(h.error||k.error||a.error).message; return false; }
-  HALLEN=h.data; ZONES=a.data.map(z=>({...z, cat:z.kategorie_id, halle:z.halle_id, label:z.name, x:z.pos_x,y:z.pos_y,w:z.pos_w,h:z.pos_h, folder:z.sharepoint_ordner}));
+  if(h.error||k.error||a.error){ document.getElementById('loader').innerHTML='❌ '+(h.error||k.error||a.error).message; return false; }
+  PRUEF=p.data||[];
+  ZONES=a.data.map(z=>({...z,cat:z.kategorie_id,halle:z.halle_id,label:z.name,x:z.pos_x,y:z.pos_y,w:z.pos_w,h:z.pos_h,folder:z.sharepoint_ordner}));
   CATS={}; k.data.forEach(c=>CATS[c.id]={name:c.name,color:c.farbe});
   for(const c in CATS) layerOn[c]=true;
-  hMap={}; HALLEN.forEach(x=>hMap[x.id]={...x, ngf:(x.ngf_m2?x.ngf_m2.toLocaleString('de-DE')+' m²':'—'), x:x.pos_x,y:x.pos_y,w:x.pos_w,h:x.pos_h});
-  HALLEN=HALLEN.map(x=>hMap[x.id]);
+  hMap={}; h.data.forEach(x=>hMap[x.id]={...x,ngf:(x.ngf_m2?x.ngf_m2.toLocaleString('de-DE')+' m²':'—'),x:x.pos_x,y:x.pos_y,w:x.pos_w,h:x.pos_h});
+  HALLEN=h.data.map(x=>hMap[x.id]);
+  // Fälligkeit: effektiver Status je Anlage (DB-Status ODER Prüfung <30 Tage)
+  const now=new Date(), soon=new Date(now.getTime()+30*864e5);
+  ZONES.forEach(z=>{
+    z.effStatus=z.status;
+    const ps=PRUEF.filter(x=>x.anlage_id===z.id && x.faellig_am);
+    for(const pr of ps){ const d=new Date(pr.faellig_am);
+      if(d<now && z.effStatus!=='offen') z.effStatus='offen';
+      else if(d<soon && z.effStatus==='ok') z.effStatus='faellig'; }
+  });
   return true;
 }
 
 function buildLegend(){
   const leg=document.getElementById('legend'); leg.innerHTML='';
-  const ST={ok:['OK','#22c55e'],faellig:['Prüfung/Aktion','#f59e0b'],offen:['Offen','#ef4444']};
-  for(const s in ST) leg.innerHTML+=`<span><i class="dot" style="background:${ST[s][1]};border-radius:50%"></i>${ST[s][0]}</span>`;
+  for(const s in STLBL) leg.innerHTML+=`<span><i class="dot" style="background:${STCOL[s]}"></i>${STLBL[s]}</span>`;
 }
-const STCOL={ok:'#22c55e',faellig:'#f59e0b',offen:'#ef4444'};
-const STLBL={ok:'OK',faellig:'Prüfung/Aktion',offen:'Offen'};
+function buildKpis(){
+  const total=ZONES.length;
+  const faellig=ZONES.filter(z=>z.effStatus==='faellig').length;
+  const offen=ZONES.filter(z=>z.effStatus==='offen').length;
+  const ok=ZONES.filter(z=>z.effStatus==='ok').length;
+  const el=document.getElementById('kpis');
+  el.innerHTML=`
+    <div class="kpi"><div class="n">${total}</div><div class="l">Anlagen gesamt</div></div>
+    <div class="kpi"><div class="n" style="color:var(--ok)">${ok}</div><div class="l">Status OK</div></div>
+    <div class="kpi ${faellig?'warn':''}"><div class="n" style="color:var(--warn)">${faellig}</div><div class="l">Prüfung/Aktion fällig</div></div>
+    <div class="kpi ${offen?'crit':''}"><div class="n" style="color:var(--crit)">${offen}</div><div class="l">Offen / überfällig</div></div>
+    <div class="kpi"><div class="n">${HALLEN.length}</div><div class="l">Hallen & Bereiche</div></div>`;
+}
 
 function buildLayerPanel(){
   const lb=document.getElementById('layerbody');
-  const catCount={}; for(const k in CATS) catCount[k]=0; ZONES.forEach(z=>catCount[z.cat]++);
-  let html='<div class="lgroup"><div class="grouphead">🏛 Räumlich</div>';
-  html+=lrow('hallen','Hallen & Bereiche','#7fb0ff',HALLEN.length);
-  html+='</div><div class="lgroup"><div class="grouphead">⚙️ Anlagen & TGA</div>';
+  const cc={}; for(const k in CATS) cc[k]=0; ZONES.forEach(z=>cc[z.cat]++);
+  let html='<div class="lgroup"><div class="grouphead">🏛 Räumlich</div>'+lrow('hallen','Hallen & Bereiche','#567E84',HALLEN.length)+'</div>';
+  html+='<div class="lgroup"><div class="grouphead">⚙️ Anlagen & TGA</div>';
   html+=`<div class="lrow master${allOn()?' on':''}" data-master="1"><div class="sw"></div><span>Alle Anlagen</span><span class="cnt">${ZONES.length}</span></div>`;
-  for(const k in CATS) html+=lrow(k,CATS[k].name,CATS[k].color,catCount[k]);
+  for(const k in CATS) html+=lrow(k,CATS[k].name,CATS[k].color,cc[k]);
   html+='</div>'; lb.innerHTML=html;
   lb.querySelectorAll('.lrow').forEach(r=>r.onclick=()=>{
     if(r.dataset.master){ const t=!allOn(); for(const k in CATS) layerOn[k]=t; }
@@ -173,31 +240,33 @@ function toggleLayerPanel(){ document.getElementById('layers').classList.toggle(
 
 function renderHallen(){
   const hc=document.getElementById('hallen'); hc.innerHTML='';
-  HALLEN.forEach(h=>{
-    const d=document.createElement('div'); d.className='halle';
+  HALLEN.forEach(h=>{ const d=document.createElement('div'); d.className='halle';
     d.style.cssText=`left:${h.x}%;top:${h.y}%;width:${h.w}%;height:${h.h}%;`;
     d.innerHTML=`<span class="hl">${h.label}</span><span class="hngf">${h.ngf}</span>`;
-    d.onclick=(e)=>{e.stopPropagation();zoomToHalle(h);}; hc.appendChild(d);
-  });
+    d.onclick=(e)=>{e.stopPropagation();zoomToHalle(h);}; hc.appendChild(d); });
 }
 function renderZones(){
   const zc=document.getElementById('zones'); zc.innerHTML=''; let n=0;
   ZONES.forEach(z=>{
     const cat=CATS[z.cat]||{color:'#888'};
-    let match=layerOn[z.cat] && (!search||z.label.toLowerCase().includes(search)||(z.typ||'').toLowerCase().includes(search));
-    if(currentHalle && z.halle!==currentHalle) match=false;
+    let match=layerOn[z.cat]&&(!search||z.label.toLowerCase().includes(search)||(z.typ||'').toLowerCase().includes(search));
+    if(currentHalle&&z.halle!==currentHalle) match=false;
     const d=document.createElement('div'); d.className='zone'+(match?'':' dim');
     d.style.cssText+=`left:${z.x}%;top:${z.y}%;width:${z.w}%;height:${z.h}%;border-color:${cat.color};`;
-    d.innerHTML=`<span class="tag" style="background:${cat.color}">${z.label}</span><span class="sdot" style="background:${STCOL[z.status]||'#888'}"></span>`;
-    if(match){ d.onclick=(e)=>{e.stopPropagation();openPanel(z);}; n++; }
+    d.innerHTML=`<span class="tag" style="background:${cat.color}">${z.label}</span><span class="sdot" style="background:${STCOL[z.effStatus]||'#888'}"></span>`;
+    if(match){ d.onclick=(e)=>{e.stopPropagation();openPanel(z);};
+      d.onmousemove=(e)=>showTip(e,z); d.onmouseleave=hideTip; n++; }
     zc.appendChild(d);
   });
   document.getElementById('count').textContent=n+' Anlagen sichtbar';
 }
-function applyLayers(){ document.getElementById('hallen').classList.toggle('hidden', !(layerOn.hallen&&!currentHalle)); renderZones(); }
+function showTip(e,z){ const t=document.getElementById('tip');
+  t.innerHTML=`<div class="tt">${z.label}</div><div class="ts">${z.typ||''} · ${STLBL[z.effStatus]||''}</div>`;
+  t.style.left=(e.clientX+14)+'px'; t.style.top=(e.clientY+14)+'px'; t.classList.add('show'); }
+function hideTip(){ document.getElementById('tip').classList.remove('show'); }
+function applyLayers(){ document.getElementById('hallen').classList.toggle('hidden',!(layerOn.hallen&&!currentHalle)); renderZones(); }
 
-function zoomToHalle(h){
-  currentHalle=h.id; const pad=4;
+function zoomToHalle(h){ currentHalle=h.id; const pad=4;
   const scale=Math.min(100/(h.w+pad*2),100/(h.h+pad*2),4.5);
   const tx=(50/scale)-(h.x+h.w/2), ty=(50/scale)-(h.y+h.h/2);
   document.getElementById('planbox').style.transform=`scale(${scale}) translate(${tx}%,${ty}%)`;
@@ -206,81 +275,69 @@ function zoomToHalle(h){
   const hi=document.getElementById('halleinfo'); hi.style.display='inline'; hi.textContent=`📍 ${h.label} · ${h.ngf} · ${h.nutzung||''}`;
   renderZones();
 }
-function zoomOut(){ currentHalle=null; document.getElementById('planbox').style.transform=''; document.getElementById('backbtn').style.display='none'; document.getElementById('halleinfo').style.display='none'; applyLayers(); }
+function zoomOut(){ currentHalle=null; document.getElementById('planbox').style.transform='';
+  document.getElementById('backbtn').style.display='none'; document.getElementById('halleinfo').style.display='none'; applyLayers(); }
+
+function statusPill(st){ return `<span class="status" style="background:${STCOL[st]}22;color:${STCOL[st]}"><i class="dot" style="background:${STCOL[st]}"></i>${STLBL[st]||st}</span>`; }
 
 async function openPanel(z){
   const cat=CATS[z.cat]||{name:'?',color:'#888'}, h=hMap[z.halle];
   document.getElementById('p-cat').textContent=cat.name; document.getElementById('p-cat').style.color=cat.color;
   document.getElementById('p-title').textContent=z.label;
-  document.getElementById('p-status').innerHTML=`<i class="dot" style="background:${STCOL[z.status]};border-radius:50%"></i>${STLBL[z.status]||z.status}`;
-  const sp = z.folder ? `<a class="btn" target="_blank" href="https://hafesta.sharepoint.com/sites/BWGGL/Freigegebene%20Dokumente/Maschinen%20und%20Anlagen/Archiv%20(NAS)/Maschinen%20und%20Anlagen/${encodeURIComponent(z.folder)}">📁 SharePoint-Ordner</a>` : '';
+  document.getElementById('p-status').outerHTML=statusPill(z.effStatus).replace('class="status"','class="status" id="p-status"');
+  const sp=z.folder?`<a class="btn" target="_blank" href="https://hafesta.sharepoint.com/sites/BWGGL/Freigegebene%20Dokumente/Maschinen%20und%20Anlagen/Archiv%20(NAS)/Maschinen%20und%20Anlagen/${encodeURIComponent(z.folder)}">📁 SharePoint-Ordner öffnen</a>`:'';
   let body=`<div class="row"><span class="k">Typ</span><span class="v">${z.typ||'—'}</span></div>
-    <div class="row"><span class="k">Halle</span><span class="v">${h?h.label+' ('+h.ngf+')':'—'}</span></div>
-    <div class="info">${z.info||''}</div>`;
-  // Prüfungen + Wartung live nachladen
-  const [pr,wa,dk] = await Promise.all([
+    <div class="row"><span class="k">Halle</span><span class="v">${h?h.label+' · '+h.ngf:'—'}</span></div>`;
+  if(z.info) body+=`<div class="info">${z.info}</div>`;
+  const [pr,wa]=await Promise.all([
     sb.from('pruefungen').select('*').eq('anlage_id',z.id).order('faellig_am'),
-    sb.from('wartung').select('*').eq('anlage_id',z.id).order('datum',{ascending:false}),
-    sb.from('dokumente').select('*').eq('anlage_id',z.id)
-  ]);
+    sb.from('wartung').select('*').eq('anlage_id',z.id).order('datum',{ascending:false}) ]);
+  const now=new Date();
   body+=`<h3>🔍 Prüfungen</h3>`;
-  body+=(pr.data&&pr.data.length)?pr.data.map(p=>`<div class="item"><span class="t">${p.art}</span> — fällig ${p.faellig_am||'?'} ${p.ergebnis?'· '+p.ergebnis:''}</div>`).join(''):'<div class="item">keine erfasst</div>';
+  body+=(pr.data&&pr.data.length)?pr.data.map(p=>{
+    let bs='ok',bl='ok'; if(p.faellig_am){const d=new Date(p.faellig_am); if(d<now){bs='offen';bl='überfällig';} else if(d<new Date(now.getTime()+30*864e5)){bs='faellig';bl='bald fällig';}}
+    return `<div class="item"><span><span class="t">${p.art}</span> · fällig ${p.faellig_am||'?'}</span><span class="badge" style="background:${STCOL[bs]}22;color:${STCOL[bs]}">${bl}</span></div>`;
+  }).join(''):'<div class="item" style="color:var(--muted)">keine erfasst</div>';
   body+=`<h3>🔧 Wartung</h3>`;
-  body+=(wa.data&&wa.data.length)?wa.data.map(w=>`<div class="item"><span class="t">${w.datum||''}</span> ${w.beschreibung||''}</div>`).join(''):'<div class="item">keine erfasst</div>';
+  body+=(wa.data&&wa.data.length)?wa.data.map(w=>`<div class="item"><span class="t">${w.datum||''}</span><span>${w.beschreibung||''}</span></div>`).join(''):'<div class="item" style="color:var(--muted)">keine erfasst</div>';
   body+=sp;
-  if(session){
-    body+=`<h3>✏️ Bearbeiten</h3>
-    <label style="font-size:12px;color:#8b96ad">Status</label>
-    <select id="ed-status">
-      <option value="ok"${z.status==='ok'?' selected':''}>OK</option>
-      <option value="faellig"${z.status==='faellig'?' selected':''}>Prüfung/Aktion fällig</option>
-      <option value="offen"${z.status==='offen'?' selected':''}>Offen</option>
-    </select>
-    <button class="btn edit" onclick="saveStatus('${z.id}')">Status speichern</button>
-    <label style="font-size:12px;color:#8b96ad;margin-top:10px;display:block">Neue Prüfung</label>
-    <input id="ed-pruef-art" placeholder="Art (UVV/TÜV/CE…)">
-    <input id="ed-pruef-faellig" type="date">
-    <button class="btn edit" onclick="addPruef('${z.id}')">Prüfung hinzufügen</button>`;
-  }
+  if(session){ body+=`<div class="editbox"><h3 style="margin-top:0">✏️ Bearbeiten</h3>
+    <label style="font-size:12px;color:var(--muted)">Status</label>
+    <select id="ed-status">${['ok','faellig','offen'].map(s=>`<option value="${s}"${z.status===s?' selected':''}>${STLBL[s]}</option>`).join('')}</select>
+    <button class="btn" onclick="saveStatus('${z.id}')">Status speichern</button>
+    <label style="font-size:12px;color:var(--muted);margin-top:12px;display:block">Neue Prüfung</label>
+    <input id="ed-art" placeholder="Art (UVV/TÜV/CE…)"><input id="ed-faellig" type="date">
+    <button class="btn sec" onclick="addPruef('${z.id}')">Prüfung hinzufügen</button></div>`; }
   document.getElementById('p-body').innerHTML=body;
   document.getElementById('panel').classList.add('open');
 }
 function closePanel(){ document.getElementById('panel').classList.remove('open'); }
 
-async function saveStatus(id){
-  const v=document.getElementById('ed-status').value;
+async function saveStatus(id){ const v=document.getElementById('ed-status').value;
   const {error}=await sb.from('anlagen').update({status:v,updated_at:new Date().toISOString()}).eq('id',id);
   if(error){ alert('Fehler: '+error.message); return; }
-  const z=ZONES.find(x=>x.id===id); z.status=v; renderZones();
-  const zc=ZONES.find(x=>x.id===id); openPanel(zc);
-}
-async function addPruef(id){
-  const art=document.getElementById('ed-pruef-art').value.trim();
-  const faellig=document.getElementById('ed-pruef-faellig').value||null;
+  await loadData(); buildKpis(); renderZones(); openPanel(ZONES.find(x=>x.id===id)); }
+async function addPruef(id){ const art=document.getElementById('ed-art').value.trim(), f=document.getElementById('ed-faellig').value||null;
   if(!art){ alert('Art angeben'); return; }
-  const {error}=await sb.from('pruefungen').insert({anlage_id:id,art:art,faellig_am:faellig});
+  const {error}=await sb.from('pruefungen').insert({anlage_id:id,art,faellig_am:f});
   if(error){ alert('Fehler: '+error.message); return; }
-  openPanel(ZONES.find(x=>x.id===id));
-}
+  await loadData(); buildKpis(); renderZones(); openPanel(ZONES.find(x=>x.id===id)); }
 
-// --- Auth ---
-function loginAction(){ if(session){ sb.auth.signOut().then(()=>{session=null;updateLoginBtn();closePanel();}); } else { document.getElementById('loginBox').classList.add('show'); } }
-async function doLogin(){
-  const email=document.getElementById('li-email').value, pw=document.getElementById('li-pw').value;
+function loginAction(){ if(session){ sb.auth.signOut().then(()=>{session=null;updateLogin();closePanel();}); } else document.getElementById('loginBox').classList.add('show'); }
+async function doLogin(){ const email=document.getElementById('li-email').value,pw=document.getElementById('li-pw').value;
   const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
   if(error){ document.getElementById('li-err').textContent=error.message; return; }
-  session=data.session; document.getElementById('loginBox').classList.remove('show'); updateLoginBtn();
-}
-function updateLoginBtn(){ const b=document.getElementById('loginBtn'); if(session){ b.textContent='✓ Angemeldet (abmelden)'; b.classList.add('in'); } else { b.textContent='🔒 Anmelden'; b.classList.remove('in'); } }
+  session=data.session; document.getElementById('loginBox').classList.remove('show'); updateLogin(); }
+function updateLogin(){ const b=document.getElementById('loginBtn'), bn=document.getElementById('editBanner');
+  if(session){ b.textContent='✓ Angemeldet'; b.classList.add('in'); bn.classList.add('show'); }
+  else { b.textContent='🔒 Anmelden'; b.classList.remove('in'); bn.classList.remove('show'); } }
 
 document.getElementById('search').oninput=e=>{ search=e.target.value.toLowerCase(); renderZones(); };
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closePanel(); document.getElementById('loginBox').classList.remove('show'); if(currentHalle) zoomOut(); } });
 
-(async ()=>{
-  const ok=await loadData();
-  if(!ok) return;
-  const {data}=await sb.auth.getSession(); session=data.session; updateLoginBtn();
-  buildLegend(); buildLayerPanel(); renderHallen(); applyLayers();
+(async()=>{ if(!await loadData()) return;
+  const {data}=await sb.auth.getSession(); session=data.session; updateLogin();
+  buildLegend(); buildKpis(); buildLayerPanel(); renderHallen(); applyLayers();
   document.getElementById('loader').style.display='none';
 })();
 </script>
