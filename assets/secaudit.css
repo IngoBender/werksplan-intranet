@@ -1,0 +1,34 @@
+*{box-sizing:border-box}body{font-family:'Helvetica','Arial',sans-serif;margin:0;background:#eef1f1;color:#143439}
+.wrap{max-width:760px;margin:0 auto;padding:0 20px 24px}
+.topbar{background:#fff;margin:0;padding:18px 24px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;border-bottom:1px solid #e3e8e8}
+.topbar img.logo{height:52px;width:auto;display:block}
+.topbar .ttl{text-align:right}
+.topbar .ttl .doctype{font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:#567E84;margin-bottom:3px}
+.topbar .ttl h1{font-size:19px;margin:0;font-weight:700;color:#143439}
+.flowbar{height:5px;background:linear-gradient(-56deg,#567E84 0%,#46B384 100%)}
+.statusrow{display:flex;align-items:center;gap:10px;margin:18px 0 4px}
+.statusrow .badge{font-size:14px;font-weight:700;color:#fff;background:linear-gradient(-56deg,#567E84 0%,#46B384 100%);padding:3px 14px;border-radius:20px}
+.sub{color:#567E84;font-size:13px;margin-bottom:4px}
+.kpis{display:flex;gap:10px;margin:16px 0}
+.kpi{flex:1;background:#fff;border-radius:8px;padding:12px;text-align:center;box-shadow:0 1px 3px rgba(20,52,57,.1)}
+.kpi .n{font-size:26px;font-weight:700}.kpi .l{font-size:11px;color:#567E84;text-transform:uppercase;letter-spacing:.4px}
+.card{background:#fff;border-radius:8px;padding:16px;margin:14px 0;box-shadow:0 1px 3px rgba(20,52,57,.1)}
+h2{font-size:13px;margin:0 0 10px;color:#143439;text-transform:uppercase;letter-spacing:.5px;font-weight:700;border-left:3px solid #46B384;padding-left:9px}
+h3{font-size:14px;margin:14px 0 6px;color:#567E84}
+ul.f{margin:0;padding-left:18px;font-size:13px;line-height:1.55}ul.f li{word-break:break-all}
+.clean{color:#143439;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#143439;color:#fff;padding:7px 6px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+td{padding:7px 6px;border-bottom:1px solid #e3e8e8;text-align:left}
+td.c{text-align:center;font-variant-numeric:tabular-nums}
+.leg{font-size:11px;color:#567E84;margin-top:6px}
+.ft{color:#8fa3a6;font-size:11px;text-align:center;margin-top:18px}
+.expl{font-size:12.5px;line-height:1.5;color:#2a3d40}
+.expl li{margin-bottom:5px}
+.expl b{color:#143439}
+.expl .intro{margin:10px 0 10px}
+.lvl{font-size:11px;color:#567E84;margin-top:10px;border-top:1px solid #e3e8e8;padding-top:8px}
+details summary{font-size:13px;margin:0;color:#143439;text-transform:uppercase;letter-spacing:.5px;font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;border-left:3px solid #46B384;padding-left:9px}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"\25B8";font-size:12px;transition:transform .15s;color:#46B384}
+details[open] summary::before{transform:rotate(90deg)}
