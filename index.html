@@ -692,11 +692,10 @@ function renderHallen(){const svg=document.getElementById('hallen');
 function openHalle(h){ currentHalle=h.id; const m=META[h.id]; if(!m)return;
  document.getElementById('planbox').style.display='none';
  const det=document.getElementById('detail'); det.classList.add('show');
- document.getElementById('detailImg').src=`${RAW}/halls/${h.id}.png?v=1784130971`;
- // Crop ist serverseitig schon rotiert (schmale Hallen quer). Bild passt in Viewport.
+ document.getElementById('detailImg').src=`${RAW}/halls/${h.id}.png?v=1784145575`;
+ // Crop ist serverseitig schon zugeschnitten + rotiert (schmale Hallen quer). Bild passt in Viewport.
  const di=document.getElementById('detailImg');
- if(m.relpoly&&m.relpoly.length>=3){ di.style.clipPath='polygon('+m.relpoly.map(([x,y])=>`${x}% ${y}%`).join(',')+')'; }
- else di.style.clipPath='';
+ di.style.clipPath='';  // kein clip-path: verursachte Kollaps wenn Bild noch nicht geladen
  const wrap=document.getElementById('detailWrap');
  wrap.style.transform=''; wrap.style.width=''; wrap.style.height='';
  document.getElementById('detail').style.height='';
