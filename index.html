@@ -67,7 +67,7 @@
  #panel h3{font-size:12px;margin:20px 0 9px;color:var(--bright);text-transform:uppercase;letter-spacing:.5px;}
  #panel .item{background:var(--panel2);border-radius:8px;padding:9px 11px;margin-bottom:6px;font-size:12px;display:flex;justify-content:space-between;gap:8px;} #panel .item .t{font-weight:600;} #panel .item .badge{font-size:10px;}
  #panel a.btn,#panel button.btn{display:block;width:100%;text-align:center;margin-top:11px;padding:12px;background:var(--bright);color:#08210f;text-decoration:none;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;} #panel button.btn.sec{background:var(--panel2);color:var(--bright);border:1px solid var(--bright);}
- #panel .close{position:absolute;top:18px;right:18px;background:rgba(255,255,255,.1);border:none;color:#fff;font-size:20px;width:32px;height:32px;border-radius:8px;cursor:pointer;}
+ #panel .close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:22px;font-weight:700;width:38px;height:38px;border-radius:10px;cursor:pointer;line-height:1;z-index:5;} #panel .close:hover{background:rgba(224,87,74,.85);border-color:#e0574a;}
  #panel select,#panel input{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:9px;border-radius:8px;font-size:13px;margin-top:6px;}
  #panel .editbox{margin-top:14px;padding:14px;background:rgba(70,179,132,.07);border:1px solid rgba(70,179,132,.3);border-radius:10px;}
  .foot{padding:12px 24px 28px;font-size:11px;color:#5c7975;}
@@ -692,7 +692,7 @@ function renderHallen(){const svg=document.getElementById('hallen');
 function openHalle(h){ currentHalle=h.id; const m=META[h.id]; if(!m)return;
  document.getElementById('planbox').style.display='none';
  const det=document.getElementById('detail'); det.classList.add('show');
- document.getElementById('detailImg').src=`halls/${h.id}.png?v=1784145696`;
+ document.getElementById('detailImg').src=`halls/${h.id}.png?v=1784146338`;
  // Crop ist serverseitig schon zugeschnitten + rotiert (schmale Hallen quer). Bild passt in Viewport.
  const di=document.getElementById('detailImg');
  di.style.clipPath='';  // kein clip-path: verursachte Kollaps wenn Bild noch nicht geladen
@@ -761,6 +761,7 @@ async function openPanel(z){const cat=CATS[z.cat]||{name:'?',color:'#888'},h=hMa
  body+=`<h3>🔧 Wartung</h3>`+((wa.data&&wa.data.length)?wa.data.map(w=>`<div class="item"><span class="t">${w.datum||''}</span><span>${w.beschreibung||''}</span></div>`).join(''):'<div class="item" style="color:var(--muted)">keine erfasst</div>');
  body+=sp;
  if(session)body+=`<div class="editbox"><h3 style="margin-top:0">✏️ Bearbeiten</h3><label style="font-size:12px;color:var(--muted)">Status</label><select id="ed-status">${['ok','faellig','offen'].map(s=>`<option value="${s}"${z.status===s?' selected':''}>${STLBL[s]}</option>`).join('')}</select><button class="btn" onclick="saveStatus('${z.id}')">Status speichern</button><label style="font-size:12px;color:var(--muted);margin-top:12px;display:block">Neue Prüfung</label><input id="ed-art" placeholder="Art (UVV/TÜV/CE…)"><input id="ed-faellig" type="date"><button class="btn sec" onclick="addPruef('${z.id}')">Prüfung hinzufügen</button></div>`;
+ body+=`<button class="btn sec" style="margin-top:16px" onclick="closePanel()">✕ Schließen</button>`;
  document.getElementById('p-body').innerHTML=body; document.getElementById('panel').classList.add('open');}
 function closePanel(){document.getElementById('panel').classList.remove('open');}
 async function saveStatus(id){const v=document.getElementById('ed-status').value;const {error}=await sb.from('anlagen').update({status:v,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert('Fehler: '+error.message);return;}await loadData();buildKpis();if(currentHalle)openHalle(hMap[currentHalle]);if(mode==='list')renderList();openPanel(ZONES.find(x=>x.id===id));}
