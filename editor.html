@@ -1,0 +1,107 @@
+<!DOCTYPE html><html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Werksplan — Hallen-Editor</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+ :root{--legacy:#143439;--bright:#46B384;--graphite:#567E84;--bg:#0e1a1c;--panel:#12262a;--line:#1e3a3f;--txt:#eaf2f0;--muted:#8fa9a8;}
+ *{box-sizing:border-box;margin:0;padding:0;} body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);display:flex;height:100vh;overflow:hidden;}
+ #side{width:300px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto;}
+ .sh{padding:14px 16px;background:var(--legacy);font-weight:700;border-bottom:1px solid var(--line);} .sh .bar{height:3px;background:linear-gradient(-56deg,#567E84,#46B384);margin:8px -16px -14px;}
+ .hint{padding:12px 16px;font-size:12px;color:var(--muted);line-height:1.5;border-bottom:1px solid var(--line);}
+ .hlist{flex:1;} .hrow{display:flex;align-items:center;gap:8px;padding:9px 16px;font-size:13px;cursor:pointer;border-bottom:1px solid #17282c;}
+ .hrow:hover{background:#16292d;} .hrow.active{background:rgba(70,179,132,.15);border-left:3px solid var(--bright);}
+ .hrow .st{margin-left:auto;font-size:10px;padding:1px 7px;border-radius:8px;} .hrow .done{background:#1e5540;color:#8fe6bd;} .hrow .todo{background:#4a3a1a;color:#f5c983;}
+ .btns{padding:12px 16px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);}
+ button{background:var(--panel);color:var(--txt);border:1px solid var(--line);padding:9px;border-radius:8px;font-size:13px;cursor:pointer;} button:hover{border-color:var(--bright);}
+ button.pri{background:var(--bright);color:#08210f;border:none;font-weight:700;} button.dang{border-color:#e0574a;color:#ffb3ab;}
+ #main{flex:1;position:relative;overflow:auto;background:#0a1213;}
+ #stage{position:relative;width:max-content;} #bg{display:block;max-width:none;}
+ #svg{position:absolute;top:0;left:0;}
+ .status{position:fixed;bottom:0;left:300px;right:0;background:var(--legacy);padding:8px 16px;font-size:12px;color:#9fc4bd;border-top:1px solid var(--bright);}
+ #zoomctl{position:fixed;top:12px;right:20px;display:flex;gap:6px;z-index:10;} #zoomctl button{width:36px;height:36px;font-size:16px;font-weight:700;background:var(--panel);}
+ #exportBox{position:fixed;inset:0;background:rgba(6,14,15,.8);display:none;align-items:center;justify-content:center;z-index:50;} #exportBox.show{display:flex;}
+ #exportBox .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;width:560px;max-height:80vh;display:flex;flex-direction:column;}
+ #exportBox textarea{width:100%;flex:1;min-height:300px;background:#0a1213;color:#8fe6bd;border:1px solid var(--line);border-radius:8px;padding:12px;font-family:monospace;font-size:11px;margin:10px 0;}
+</style></head><body>
+<div id="side">
+ <div class="sh">🏭 Hallen-Editor<div class="bar"></div></div>
+ <div class="hint"><b>So geht's:</b><br>1. Halle links wählen<br>2. „✏️ Neu zeichnen" klicken<br>3. Ecken der Halle im Plan <b>anklicken</b> (der Reihe nach)<br>4. <b>Doppelklick</b> oder „✓ Schließen" beendet das Polygon<br>5. Nächste Halle · am Ende <b>Exportieren</b></div>
+ <div class="hlist" id="hlist"></div>
+ <div class="btns">
+  <button class="pri" id="drawBtn" onclick="startDraw()">✏️ Neu zeichnen</button>
+  <button onclick="closePoly()">✓ Polygon schließen</button>
+  <button onclick="undoPt()">↩ letzter Punkt zurück</button>
+  <button class="dang" onclick="clearPoly()">🗑 Polygon dieser Halle löschen</button>
+  <button class="pri" onclick="doExport()">📤 Exportieren (JSON)</button>
+ </div>
+</div>
+<div id="main"><div id="stage"><img id="bg" src="grundriss_hd.png"><svg id="svg"></svg></div></div>
+<div id="zoomctl"><button onclick="zoom(1.25)">+</button><button onclick="zoom(0.8)">−</button><button onclick="zoomFit()">⤢</button></div>
+<div class="status" id="status">Bereit. Halle wählen und „Neu zeichnen".</div>
+<div id="exportBox"><div class="card"><b>📤 Polygone exportieren</b><p style="font-size:12px;color:var(--muted);margin-top:6px">Kopier das JSON und gib es Benderman — oder es wird automatisch gespeichert.</p><textarea id="exportTxt" readonly></textarea><div style="display:flex;gap:8px"><button class="pri" onclick="saveToServer()">💾 Auf Server speichern</button><button onclick="document.getElementById('exportBox').classList.remove('show')">Schließen</button></div></div></div>
+<script>
+const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vcnRpbGJtbHdveGpldmh3cGltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMTU5NDYsImV4cCI6MjA5OTY5MTk0Nn0.5Uz1yQ9RsvJDJffa70foa-zyKDd3gWfaZmvulCxMppc";
+const sb=supabase.createClient(SB_URL,SB_ANON);
+const bg=document.getElementById('bg'),svg=document.getElementById('svg'),stage=document.getElementById('stage');
+let HALLEN=[],polys={},active=null,drawing=false,scale=1,natW=0,natH=0;
+
+bg.onload=()=>{ natW=bg.naturalWidth; natH=bg.naturalHeight; zoomFit(); };
+function applyScale(){ bg.style.width=(natW*scale)+'px'; svg.setAttribute('width',natW*scale); svg.setAttribute('height',natH*scale); redraw(); }
+function zoom(f){ scale=Math.max(0.15,Math.min(4,scale*f)); applyScale(); }
+function zoomFit(){ const mw=document.getElementById('main').clientWidth-20; scale=mw/natW; applyScale(); }
+
+async function load(){
+ const {data}=await sb.from('hallen').select('*').order('sort');
+ HALLEN=data||[];
+ // bestehende Rechtecke als Start-Polygon
+ HALLEN.forEach(h=>{ polys[h.id]=[[h.pos_x,h.pos_y],[h.pos_x+h.pos_w,h.pos_y],[h.pos_x+h.pos_w,h.pos_y+h.pos_h],[h.pos_x,h.pos_y+h.pos_h]]; });
+ renderList();
+}
+function renderList(){
+ document.getElementById('hlist').innerHTML=HALLEN.map(h=>{
+  const done=polys[h.id]&&polys[h.id].length>=3;
+  return `<div class="hrow ${active===h.id?'active':''}" onclick="pick('${h.id}')"><span>${h.label}</span><span class="st ${done?'done':'todo'}">${done?'✓':'offen'}</span></div>`;
+ }).join('');
+}
+function pick(id){ active=id; drawing=false; document.getElementById('drawBtn').textContent='✏️ Neu zeichnen'; renderList(); redraw();
+ const h=HALLEN.find(x=>x.id===id); setStatus(`${h.label} gewählt. „Neu zeichnen" um Ecken zu setzen.`); }
+function startDraw(){ if(!active){setStatus('Erst eine Halle links wählen.');return;} drawing=true; polys[active]=[]; document.getElementById('drawBtn').textContent='● zeichnet… (klicken)'; redraw(); setStatus('Ecken der Reihe nach anklicken. Doppelklick = schließen.'); }
+function closePoly(){ drawing=false; document.getElementById('drawBtn').textContent='✏️ Neu zeichnen'; renderList(); redraw(); setStatus('Polygon gespeichert.'); }
+function undoPt(){ if(active&&polys[active]&&polys[active].length){polys[active].pop();redraw();} }
+function clearPoly(){ if(active){polys[active]=[];drawing=false;document.getElementById('drawBtn').textContent='✏️ Neu zeichnen';renderList();redraw();} }
+
+svg.addEventListener('click',e=>{ if(!drawing||!active)return;
+ const rect=svg.getBoundingClientRect();
+ const xp=((e.clientX-rect.left)/rect.width)*100, yp=((e.clientY-rect.top)/rect.height)*100;
+ polys[active].push([Math.round(xp*100)/100,Math.round(yp*100)/100]); redraw();
+ setStatus(`${polys[active].length} Punkte gesetzt.`);
+});
+svg.addEventListener('dblclick',e=>{ if(drawing)closePoly(); });
+
+function redraw(){
+ const W=natW*scale,H=natH*scale; let s='';
+ HALLEN.forEach(h=>{ const p=polys[h.id]; if(!p||p.length<1)return;
+  const isA=h.id===active; const col=isA?'#46B384':'#567E84';
+  const pts=p.map(([x,y])=>`${x/100*W},${y/100*H}`).join(' ');
+  if(p.length>=3) s+=`<polygon points="${pts}" fill="${col}22" stroke="${col}" stroke-width="${isA?3:1.5}"/>`;
+  else if(p.length===2) s+=`<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2"/>`;
+  if(isA) p.forEach(([x,y])=>{ s+=`<circle cx="${x/100*W}" cy="${y/100*H}" r="5" fill="#46B384" stroke="#fff" stroke-width="1.5"/>`; });
+  // Label
+  if(p.length>=3){ const cx=p.reduce((a,[x])=>a+x,0)/p.length/100*W, cy=p.reduce((a,[,y])=>a+y,0)/p.length/100*H;
+   s+=`<text x="${cx}" y="${cy}" fill="#fff" font-size="13" font-weight="700" text-anchor="middle" style="paint-order:stroke;stroke:#143439;stroke-width:3px">${h.label}</text>`; }
+ });
+ svg.innerHTML=s;
+}
+function setStatus(t){ document.getElementById('status').textContent=t; }
+
+function buildExport(){ return HALLEN.map(h=>({id:h.id,label:h.label,ngf_m2:h.ngf_m2,nutzung:h.nutzung,polygon:polys[h.id]||[]})); }
+function doExport(){ document.getElementById('exportTxt').value=JSON.stringify(buildExport(),null,2); document.getElementById('exportBox').classList.add('show'); }
+async function saveToServer(){
+ // Polygone in hallen.polygon (jsonb) schreiben — erfordert Login (RLS write=authenticated)
+ const {data:sess}=await sb.auth.getSession();
+ if(!sess.session){ alert('Zum Speichern bitte erst im Haupt-Dashboard anmelden, oder JSON kopieren und Benderman geben.'); return; }
+ let ok=0; for(const h of HALLEN){ const {error}=await sb.from('hallen').update({polygon:polys[h.id]}).eq('id',h.id); if(!error)ok++; }
+ alert(ok+' Hallen gespeichert.');
+}
+load();
+</script></body></html>
