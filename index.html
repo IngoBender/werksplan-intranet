@@ -692,7 +692,7 @@ function renderHallen(){const svg=document.getElementById('hallen');
 function openHalle(h){ currentHalle=h.id; const m=META[h.id]; if(!m)return;
  document.getElementById('planbox').style.display='none';
  const det=document.getElementById('detail'); det.classList.add('show');
- document.getElementById('detailImg').src=`${RAW}/halls/${h.id}.png?v=1784130335`;
+ document.getElementById('detailImg').src=`${RAW}/halls/${h.id}.png?v=1784130971`;
  // Crop ist serverseitig schon rotiert (schmale Hallen quer). Bild passt in Viewport.
  const di=document.getElementById('detailImg');
  if(m.relpoly&&m.relpoly.length>=3){ di.style.clipPath='polygon('+m.relpoly.map(([x,y])=>`${x}% ${y}%`).join(',')+')'; }
@@ -704,15 +704,22 @@ function openHalle(h){ currentHalle=h.id; const m=META[h.id]; if(!m)return;
  // Anlagen relativ zum (ggf. rotierten) Crop platzieren. relpoly/rot sind bereits konsistent.
  const zc=document.getElementById('zones'); zc.innerHTML='';
  ZONES.filter(z=>z.halle===h.id).forEach(z=>{
-   // Zonen-Mitte + Größe im Original-Crop-Raster
-   let rx=(z.x-m.x0)/m.w*100, ry=(z.y-m.y0)/m.h*100, rw=z.w/m.w*100, rh=z.h/m.h*100;
-   let cx,cy,cw,ch;
-   if(m.rot){ // 270° CCW: (rx,ry)->(ry, 100-rx-rw); Breite/Höhe tauschen
-     cx=ry; cy=100-rx-rw; cw=rh; ch=rw;
-   } else { cx=rx; cy=ry; cw=rw; ch=rh; }
    const cat=CATS[z.cat]||{color:'#888'};
    const d=document.createElement('div'); d.className='zone';
-   d.style.cssText=`left:${cx}%;top:${cy}%;width:${cw}%;height:${ch}%;border-color:${cat.color};`;
+   if(z.polygon&&z.polygon.length>=3){
+     // Neu gezeichnetes Polygon: bereits im angezeigten (gedrehten) Crop-Raster 0..100 -> als clip-path
+     const xs=z.polygon.map(p=>p[0]),ys=z.polygon.map(p=>p[1]);
+     const bx=Math.min(...xs),by=Math.min(...ys),bw=Math.max(...xs)-Math.min(...xs),bh=Math.max(...ys)-Math.min(...ys);
+     d.style.cssText=`left:${bx}%;top:${by}%;width:${bw}%;height:${bh}%;border-color:${cat.color};`;
+     const cp=z.polygon.map(p=>`${(p[0]-bx)/bw*100}% ${(p[1]-by)/bh*100}%`).join(',');
+     d.style.clipPath='polygon('+cp+')';
+   } else {
+     // Fallback: alte Positions-Logik mit Rotations-Umrechnung
+     let rx=(z.x-m.x0)/m.w*100, ry=(z.y-m.y0)/m.h*100, rw=z.w/m.w*100, rh=z.h/m.h*100;
+     let cx,cy,cw,ch;
+     if(m.rot){ cx=ry; cy=100-rx-rw; cw=rh; ch=rw; } else { cx=rx; cy=ry; cw=rw; ch=rh; }
+     d.style.cssText=`left:${cx}%;top:${cy}%;width:${cw}%;height:${ch}%;border-color:${cat.color};`;
+   }
    d.innerHTML=`<span class="tag" style="background:${cat.color}">${z.label}</span><span class="sdot" style="background:${STCOL[z.effStatus]}"></span>`;
    d.onclick=(e)=>{e.stopPropagation();openPanel(z);}; d.onmousemove=(e)=>showTip(e,z); d.onmouseleave=hideTip;
    zc.appendChild(d);

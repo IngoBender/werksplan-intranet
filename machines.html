@@ -1,0 +1,632 @@
+<!DOCTYPE html><html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Werksplan — Maschinen-Editor</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+ :root{--legacy:#143439;--bright:#46B384;--graphite:#567E84;--bg:#0e1a1c;--panel:#12262a;--line:#1e3a3f;--txt:#eaf2f0;--muted:#8fa9a8;}
+ *{box-sizing:border-box;margin:0;padding:0;} body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);display:flex;height:100vh;overflow:hidden;}
+ #side{width:320px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto;}
+ .sh{padding:14px 16px;background:var(--legacy);font-weight:700;} .sh .bar{height:3px;background:linear-gradient(-56deg,#567E84,#46B384);margin:8px -16px -14px;}
+ .fld{padding:10px 16px;border-bottom:1px solid var(--line);} .fld label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px;}
+ select,input{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--txt);padding:8px;border-radius:7px;font-size:13px;}
+ .hint{padding:10px 16px;font-size:12px;color:var(--muted);line-height:1.5;}
+ .mlist{flex:1;overflow-y:auto;} .mrow{display:flex;align-items:center;gap:8px;padding:8px 16px;font-size:13px;cursor:pointer;border-bottom:1px solid #17282c;}
+ .mrow:hover{background:#16292d;} .mrow.active{background:rgba(70,179,132,.15);border-left:3px solid var(--bright);}
+ .mrow .clr{width:10px;height:10px;border-radius:3px;flex-shrink:0;} .mrow .st{margin-left:auto;font-size:10px;padding:1px 6px;border-radius:8px;}
+ .done{background:#1e5540;color:#8fe6bd;} .todo{background:#4a3a1a;color:#f5c983;}
+ .btns{padding:12px 16px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);}
+ button{background:var(--panel);color:var(--txt);border:1px solid var(--line);padding:9px;border-radius:8px;font-size:13px;cursor:pointer;} button:hover{border-color:var(--bright);}
+ button.pri{background:var(--bright);color:#08210f;border:none;font-weight:700;} button.dang{border-color:#e0574a;color:#ffb3ab;}
+ #main{flex:1;position:relative;overflow:auto;background:#0a1213;display:flex;align-items:center;justify-content:center;}
+ #stage{position:relative;} #bg{display:block;max-width:100%;max-height:96vh;} #svg{position:absolute;top:0;left:0;width:100%;height:100%;}
+ .status{position:fixed;bottom:0;left:320px;right:0;background:var(--legacy);padding:8px 16px;font-size:12px;color:#9fc4bd;border-top:1px solid var(--bright);}
+ #loginhint{position:fixed;top:10px;right:16px;font-size:12px;background:var(--panel);padding:6px 12px;border-radius:8px;border:1px solid var(--line);}
+</style></head><body>
+<div id="side">
+ <div class="sh">🔧 Maschinen-Editor<div class="bar"></div></div>
+ <div class="fld"><label>Halle</label><select id="halleSel" onchange="pickHalle()"></select></div>
+ <div class="hint"><b>Neue Maschine:</b> Name + Kategorie eingeben → „✏️ Zeichnen" → Ecken im Plan anklicken → Doppelklick schließt. Bestehende unten wählbar.</div>
+ <div class="fld"><label>Name</label><input id="mName" placeholder="z.B. Ofen 7"></div>
+ <div class="fld"><label>Kategorie</label><select id="mCat"></select></div>
+ <div class="fld"><label>SharePoint-Ordner (optional)</label><input id="mFolder" placeholder="z.B. Ofen 7"></div>
+ <div class="mlist" id="mlist"></div>
+ <div class="btns">
+  <button class="pri" id="drawBtn" onclick="startDraw()">✏️ Zeichnen (neue Maschine)</button>
+  <button onclick="closePoly()">✓ Polygon schließen</button>
+  <button onclick="undoPt()">↩ letzter Punkt</button>
+  <button class="dang" onclick="delMachine()">🗑 gewählte Maschine löschen</button>
+ </div>
+</div>
+<div id="main"><div id="stage"><img id="bg" alt="Halle wählen"><svg id="svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg></div></div>
+<div id="loginhint">…</div>
+<div class="status" id="status">Halle wählen und Maschinen einzeichnen.</div>
+<script>
+const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vcnRpbGJtbHdveGpldmh3cGltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMTU5NDYsImV4cCI6MjA5OTY5MTk0Nn0.5Uz1yQ9RsvJDJffa70foa-zyKDd3gWfaZmvulCxMppc",RAW="https://raw.githubusercontent.com/IngoBender/werksplan-intranet/main",META={
+  "h1": {
+    "x0": 11.89,
+    "y0": 7.14,
+    "x1": 22.75,
+    "y1": 55.56,
+    "w": 10.86,
+    "h": 48.42,
+    "px": 1400,
+    "py": 740,
+    "kb": 92,
+    "relpoly": [
+      [
+        4.13,
+        81.12
+      ],
+      [
+        4.36,
+        18.42
+      ],
+      [
+        95.87,
+        18.42
+      ],
+      [
+        95.87,
+        81.12
+      ],
+      [
+        95.87,
+        81.58
+      ]
+    ],
+    "rot": true
+  },
+  "h2": {
+    "x0": 18.79,
+    "y0": 4.59,
+    "x1": 29.79,
+    "y1": 55.56,
+    "w": 11.0,
+    "h": 50.97,
+    "px": 1459,
+    "py": 742,
+    "kb": 74,
+    "relpoly": [
+      [
+        9.34,
+        80.18
+      ],
+      [
+        3.92,
+        81.82
+      ],
+      [
+        4.75,
+        60.09
+      ],
+      [
+        8.08,
+        59.27
+      ],
+      [
+        9.14,
+        18.18
+      ],
+      [
+        96.08,
+        19.0
+      ],
+      [
+        96.08,
+        80.18
+      ],
+      [
+        96.08,
+        80.18
+      ]
+    ],
+    "rot": true
+  },
+  "h3": {
+    "x0": 25.88,
+    "y0": 7.78,
+    "x1": 38.13,
+    "y1": 54.92,
+    "w": 12.25,
+    "h": 47.14,
+    "px": 1400,
+    "py": 858,
+    "kb": 121,
+    "relpoly": [
+      [
+        4.24,
+        82.94
+      ],
+      [
+        4.24,
+        16.33
+      ],
+      [
+        95.76,
+        16.33
+      ],
+      [
+        95.52,
+        83.67
+      ],
+      [
+        95.52,
+        83.67
+      ]
+    ],
+    "rot": true
+  },
+  "h41": {
+    "x0": 34.31,
+    "y0": 7.56,
+    "x1": 46.56,
+    "y1": 67.67,
+    "w": 12.25,
+    "h": 60.11,
+    "px": 1720,
+    "py": 826,
+    "kb": 158,
+    "relpoly": [
+      [
+        3.69,
+        83.27
+      ],
+      [
+        3.33,
+        16.33
+      ],
+      [
+        96.14,
+        16.33
+      ],
+      [
+        96.67,
+        83.67
+      ],
+      [
+        96.67,
+        83.67
+      ]
+    ],
+    "rot": true
+  },
+  "h5": {
+    "x0": 42.75,
+    "y0": 7.78,
+    "x1": 55.23,
+    "y1": 86.06,
+    "w": 12.48,
+    "h": 78.28,
+    "px": 2240,
+    "py": 842,
+    "kb": 152,
+    "relpoly": [
+      [
+        2.68,
+        83.97
+      ],
+      [
+        2.55,
+        16.03
+      ],
+      [
+        97.45,
+        17.15
+      ],
+      [
+        97.16,
+        82.93
+      ],
+      [
+        97.16,
+        82.93
+      ]
+    ],
+    "rot": true
+  },
+  "h6": {
+    "x0": 51.23,
+    "y0": 7.88,
+    "x1": 63.61,
+    "y1": 86.48,
+    "w": 12.38,
+    "h": 78.6,
+    "px": 2249,
+    "py": 835,
+    "kb": 116,
+    "relpoly": [
+      [
+        2.68,
+        83.12
+      ],
+      [
+        2.54,
+        16.16
+      ],
+      [
+        97.46,
+        17.93
+      ],
+      [
+        96.78,
+        83.84
+      ],
+      [
+        96.78,
+        83.84
+      ]
+    ],
+    "rot": true
+  },
+  "h7": {
+    "x0": 59.71,
+    "y0": 7.88,
+    "x1": 71.87,
+    "y1": 85.95,
+    "w": 12.16,
+    "h": 78.07,
+    "px": 2234,
+    "py": 820,
+    "kb": 145,
+    "relpoly": [
+      [
+        2.56,
+        83.22
+      ],
+      [
+        2.56,
+        17.19
+      ],
+      [
+        97.3,
+        16.45
+      ],
+      [
+        97.44,
+        83.22
+      ],
+      [
+        97.44,
+        83.55
+      ]
+    ],
+    "rot": true
+  },
+  "h8": {
+    "x0": 68.09,
+    "y0": 7.99,
+    "x1": 80.48,
+    "y1": 86.06,
+    "w": 12.39,
+    "h": 78.07,
+    "px": 2234,
+    "py": 836,
+    "kb": 143,
+    "relpoly": [
+      [
+        2.56,
+        83.86
+      ],
+      [
+        2.7,
+        16.14
+      ],
+      [
+        97.3,
+        17.19
+      ],
+      [
+        97.44,
+        83.45
+      ],
+      [
+        97.44,
+        83.45
+      ]
+    ],
+    "rot": true
+  },
+  "h9": {
+    "x0": 76.66,
+    "y0": 7.88,
+    "x1": 89.14,
+    "y1": 86.06,
+    "w": 12.48,
+    "h": 78.18,
+    "px": 2237,
+    "py": 842,
+    "kb": 150,
+    "relpoly": [
+      [
+        2.56,
+        83.17
+      ],
+      [
+        2.56,
+        16.03
+      ],
+      [
+        97.44,
+        16.35
+      ],
+      [
+        97.16,
+        83.97
+      ],
+      [
+        97.16,
+        83.97
+      ]
+    ],
+    "rot": true
+  },
+  "h42": {
+    "x0": 34.36,
+    "y0": 63.99,
+    "x1": 46.65,
+    "y1": 86.16,
+    "w": 12.29,
+    "h": 22.17,
+    "px": 1400,
+    "py": 1072,
+    "kb": 86,
+    "relpoly": [
+      [
+        16.27,
+        9.02
+      ],
+      [
+        81.94,
+        9.52
+      ],
+      [
+        83.73,
+        88.59
+      ],
+      [
+        16.27,
+        90.98
+      ],
+      [
+        16.27,
+        90.98
+      ]
+    ],
+    "rot": false
+  },
+  "verw": {
+    "x0": 3.23,
+    "y0": 23.08,
+    "x1": 15.67,
+    "y1": 50.78,
+    "w": 12.44,
+    "h": 27.7,
+    "px": 1400,
+    "py": 1323,
+    "kb": 219,
+    "relpoly": [
+      [
+        17.93,
+        7.98
+      ],
+      [
+        83.52,
+        7.22
+      ],
+      [
+        83.92,
+        92.78
+      ],
+      [
+        16.08,
+        90.83
+      ],
+      [
+        16.08,
+        90.83
+      ]
+    ],
+    "rot": false
+  },
+  "sozial": {
+    "x0": 6.48,
+    "y0": 70.05,
+    "x1": 16.48,
+    "y1": 86.69,
+    "w": 10.0,
+    "h": 16.64,
+    "px": 1400,
+    "py": 989,
+    "kb": 215,
+    "relpoly": [
+      [
+        20.0,
+        20.31
+      ],
+      [
+        45.7,
+        21.57
+      ],
+      [
+        51.6,
+        12.62
+      ],
+      [
+        78.2,
+        12.02
+      ],
+      [
+        80.0,
+        85.46
+      ],
+      [
+        28.1,
+        87.98
+      ]
+    ],
+    "rot": false
+  },
+  "durchf": {
+    "x0": 59.43,
+    "y0": 84.18,
+    "x1": 89.1,
+    "y1": 100,
+    "w": 29.67,
+    "h": 15.82,
+    "px": 2000,
+    "py": 453,
+    "kb": 27,
+    "relpoly": [
+      [
+        6.74,
+        12.64
+      ],
+      [
+        92.96,
+        13.34
+      ],
+      [
+        93.26,
+        87.23
+      ],
+      [
+        7.68,
+        87.86
+      ]
+    ],
+    "rot": false
+  },
+  "drahtvorb": {
+    "x0": 20.1,
+    "y0": 69.52,
+    "x1": 31.0,
+    "y1": 86.59,
+    "w": 10.9,
+    "h": 17.07,
+    "px": 1400,
+    "py": 931,
+    "kb": 213,
+    "relpoly": [
+      [
+        18.35,
+        13.59
+      ],
+      [
+        80.0,
+        11.72
+      ],
+      [
+        81.65,
+        86.41
+      ],
+      [
+        20.0,
+        88.28
+      ],
+      [
+        20.0,
+        88.28
+      ]
+    ],
+    "rot": false
+  },
+  "zwischenlager": {
+    "x0": 12.66,
+    "y0": 70.26,
+    "x1": 23.92,
+    "y1": 86.59,
+    "w": 11.26,
+    "h": 16.33,
+    "px": 1400,
+    "py": 862,
+    "kb": 206,
+    "relpoly": [
+      [
+        17.76,
+        14.88
+      ],
+      [
+        81.08,
+        12.25
+      ],
+      [
+        82.24,
+        84.51
+      ],
+      [
+        18.56,
+        87.75
+      ],
+      [
+        18.56,
+        87.08
+      ]
+    ],
+    "rot": false
+  }
+},CB=1784130907;
+const sb=supabase.createClient(SB_URL,SB_ANON);
+let HALLEN=[],CATS={},MACH=[],curHalle=null,drawing=false,pts=[],active=null,session=null;
+
+async function load(){
+ const [h,k]=await Promise.all([sb.from('hallen').select('*').order('sort'),sb.from('kategorien').select('*')]);
+ HALLEN=h.data||[]; k.data.forEach(c=>CATS[c.id]={name:c.name,color:c.farbe});
+ document.getElementById('halleSel').innerHTML=HALLEN.map(x=>`<option value="${x.id}">${x.label}</option>`).join('');
+ document.getElementById('mCat').innerHTML=Object.entries(CATS).map(([id,c])=>`<option value="${id}">${c.name}</option>`).join('');
+ const {data}=await sb.auth.getSession(); session=data.session;
+ document.getElementById('loginhint').textContent=session?'✓ angemeldet – Speichern aktiv':'⚠ nicht angemeldet – im Dashboard einloggen zum Speichern';
+ if(HALLEN.length) pickHalle();
+}
+async function pickHalle(){
+ curHalle=document.getElementById('halleSel').value; drawing=false; pts=[]; active=null;
+ document.getElementById('bg').src=`${RAW}/halls/${curHalle}.png?v=${CB}`;
+ const {data}=await sb.from('anlagen').select('*').eq('halle_id',curHalle);
+ MACH=data||[]; renderList(); redraw();
+ setStatus(`${HALLEN.find(x=>x.id===curHalle).label}: ${MACH.length} Maschinen. „Zeichnen" für neue.`);
+}
+function renderList(){
+ document.getElementById('mlist').innerHTML=MACH.map(m=>{
+  const c=CATS[m.kategorie_id]||{color:'#888',name:'?'}; const done=m.polygon&&m.polygon.length>=3;
+  return `<div class="mrow ${active===m.id?'active':''}" onclick="pickM('${m.id}')"><span class="clr" style="background:${c.color}"></span><span>${m.name}</span><span class="st ${done?'done':'todo'}">${done?'✓':'kein Poly'}</span></div>`;
+ }).join('')||'<div class="hint">Noch keine Maschinen in dieser Halle.</div>';
+}
+function pickM(id){ active=id; const m=MACH.find(x=>x.id===id); if(m){document.getElementById('mName').value=m.name;document.getElementById('mCat').value=m.kategorie_id||'';document.getElementById('mFolder').value=m.sharepoint_ordner||'';} renderList(); redraw(); }
+function startDraw(){ const nm=document.getElementById('mName').value.trim(); if(!nm){setStatus('Erst Name eingeben.');return;} drawing=true; pts=[]; active=null; document.getElementById('drawBtn').textContent='● zeichnet…'; setStatus('Ecken anklicken, Doppelklick schließt.'); }
+async function closePoly(){
+ if(!drawing||pts.length<3){drawing=false;document.getElementById('drawBtn').textContent='✏️ Zeichnen (neue Maschine)';return;}
+ drawing=false; document.getElementById('drawBtn').textContent='✏️ Zeichnen (neue Maschine)';
+ if(!session){alert('Nicht angemeldet – bitte erst im Haupt-Dashboard einloggen, dann hier neu laden.');return;}
+ const nm=document.getElementById('mName').value.trim(), cat=document.getElementById('mCat').value, folder=document.getElementById('mFolder').value.trim()||null;
+ // Bounding-Box aus Polygon für pos_x/y/w/h (Kompatibilität), Polygon separat
+ const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
+ const id=nm.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')+'_'+Math.random().toString(36).slice(2,6);
+ const row={id,name:nm,kategorie_id:cat,halle_id:curHalle,status:'ok',
+   pos_x:Math.min(...xs),pos_y:Math.min(...ys),pos_w:Math.max(...xs)-Math.min(...xs),pos_h:Math.max(...ys)-Math.min(...ys),
+   polygon:pts,sharepoint_ordner:folder};
+ const {error}=await sb.from('anlagen').insert(row);
+ if(error){alert('Fehler: '+error.message);return;}
+ pts=[]; await pickHalle(); setStatus(`„${nm}" gespeichert.`);
+}
+function undoPt(){ if(pts.length)pts.pop(); redraw(); }
+async function delMachine(){ if(!active){setStatus('Erst Maschine wählen.');return;} if(!session){alert('Nicht angemeldet.');return;}
+ if(!confirm('Maschine wirklich löschen?'))return;
+ const {error}=await sb.from('anlagen').delete().eq('id',active); if(error){alert(error.message);return;}
+ active=null; await pickHalle(); }
+
+const svg=document.getElementById('svg');
+svg.addEventListener('click',e=>{ if(!drawing)return; const r=svg.getBoundingClientRect();
+ pts.push([Math.round((e.clientX-r.left)/r.width*1000)/10, Math.round((e.clientY-r.top)/r.height*1000)/10]); redraw(); setStatus(pts.length+' Punkte'); });
+svg.addEventListener('dblclick',()=>{ if(drawing)closePoly(); });
+function redraw(){ let s='';
+ MACH.forEach(m=>{ if(!m.polygon||m.polygon.length<3)return; const c=CATS[m.kategorie_id]||{color:'#888'}; const isA=m.id===active;
+  s+=`<polygon points="${m.polygon.map(p=>p[0]+','+p[1]).join(' ')}" fill="${c.color}33" stroke="${c.color}" stroke-width="${isA?'0.6':'0.4'}"/>`;
+  const cx=m.polygon.reduce((a,p)=>a+p[0],0)/m.polygon.length, cy=m.polygon.reduce((a,p)=>a+p[1],0)/m.polygon.length;
+  s+=`<text x="${cx}" y="${cy}" fill="#fff" font-size="2.2" font-weight="700" text-anchor="middle" style="paint-order:stroke;stroke:${c.color};stroke-width:0.6px">${m.name}</text>`;
+ });
+ if(pts.length){ s+=`<polyline points="${pts.map(p=>p[0]+','+p[1]).join(' ')}" fill="#46B38433" stroke="#46B384" stroke-width="0.5"/>`;
+  pts.forEach(p=>s+=`<circle cx="${p[0]}" cy="${p[1]}" r="0.7" fill="#46B384" stroke="#fff" stroke-width="0.2"/>`); }
+ svg.innerHTML=s;
+}
+function setStatus(t){document.getElementById('status').textContent=t;}
+load();
+</script></body></html>
