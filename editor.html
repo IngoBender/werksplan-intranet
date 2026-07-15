@@ -53,8 +53,11 @@ function zoomFit(){ const mw=document.getElementById('main').clientWidth-20; sca
 async function load(){
  const {data}=await sb.from('hallen').select('*').order('sort');
  HALLEN=data||[];
- // bestehende Rechtecke als Start-Polygon
- HALLEN.forEach(h=>{ polys[h.id]=[[h.pos_x,h.pos_y],[h.pos_x+h.pos_w,h.pos_y],[h.pos_x+h.pos_w,h.pos_y+h.pos_h],[h.pos_x,h.pos_y+h.pos_h]]; });
+ // vorhandene Polygone laden; nur wo keins da ist Rechteck als Startvorlage
+ HALLEN.forEach(h=>{
+   if(h.polygon&&Array.isArray(h.polygon)&&h.polygon.length>=3){ polys[h.id]=h.polygon.map(p=>[p[0],p[1]]); }
+   else { polys[h.id]=[[h.pos_x,h.pos_y],[h.pos_x+h.pos_w,h.pos_y],[h.pos_x+h.pos_w,h.pos_y+h.pos_h],[h.pos_x,h.pos_y+h.pos_h]]; }
+ });
  renderList();
 }
 function renderList(){
