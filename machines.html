@@ -564,7 +564,7 @@ const SB_URL="https://mortilbmlwoxjevhwpim.supabase.co",SB_ANON="eyJhbGciOiJIUzI
     ],
     "rot": false
   }
-},CB=1784130907;
+},CB=1784145696;
 const sb=supabase.createClient(SB_URL,SB_ANON);
 let HALLEN=[],CATS={},MACH=[],curHalle=null,drawing=false,pts=[],active=null,session=null;
 
@@ -579,7 +579,7 @@ async function load(){
 }
 async function pickHalle(){
  curHalle=document.getElementById('halleSel').value; drawing=false; pts=[]; active=null;
- document.getElementById('bg').src=`${RAW}/halls/${curHalle}.png?v=${CB}`;
+ document.getElementById('bg').src=`halls/${curHalle}.png?v=${CB}`;
  const {data}=await sb.from('anlagen').select('*').eq('halle_id',curHalle);
  MACH=data||[]; renderList(); redraw();
  setStatus(`${HALLEN.find(x=>x.id===curHalle).label}: ${MACH.length} Maschinen. „Zeichnen" für neue.`);

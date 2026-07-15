@@ -692,7 +692,7 @@ function renderHallen(){const svg=document.getElementById('hallen');
 function openHalle(h){ currentHalle=h.id; const m=META[h.id]; if(!m)return;
  document.getElementById('planbox').style.display='none';
  const det=document.getElementById('detail'); det.classList.add('show');
- document.getElementById('detailImg').src=`${RAW}/halls/${h.id}.png?v=1784145575`;
+ document.getElementById('detailImg').src=`halls/${h.id}.png?v=1784145696`;
  // Crop ist serverseitig schon zugeschnitten + rotiert (schmale Hallen quer). Bild passt in Viewport.
  const di=document.getElementById('detailImg');
  di.style.clipPath='';  // kein clip-path: verursachte Kollaps wenn Bild noch nicht geladen
