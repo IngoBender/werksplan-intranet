@@ -32,3 +32,10 @@ details summary{font-size:13px;margin:0;color:#143439;text-transform:uppercase;l
 details summary::-webkit-details-marker{display:none}
 details summary::before{content:"\25B8";font-size:12px;transition:transform .15s;color:#46B384}
 details[open] summary::before{transform:rotate(90deg)}
+.remed{border-left:3px solid #1a7a3c;background:#f2f9f4;border-radius:6px;padding:12px 14px;margin:10px 0}
+.remed-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.remed-badge{background:#1a7a3c;color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px}
+.remed-h b{font-size:15px;color:#14532d}
+.remed-date{color:#64748b;font-size:12px;margin-left:auto}
+.remed-b{font-size:13px;color:#334155;line-height:1.5;margin:3px 0}
+.remed-by{font-size:11px;color:#94a3b8;margin-top:6px;font-style:italic}
